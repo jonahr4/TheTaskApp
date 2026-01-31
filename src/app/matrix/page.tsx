@@ -1,0 +1,183 @@
+"use client";
+
+import { useState } from "react";
+import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import { useTasks } from "@/hooks/useTasks";
+import { updateTask } from "@/lib/firestore";
+import { TaskModal } from "@/components/TaskModal";
+import { getQuadrant, type Task, type Quadrant } from "@/lib/types";
+import { Plus } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+
+const quadrants: {
+  key: Quadrant;
+  label: string;
+  sublabel: string;
+  accent: string;
+  bg: string;
+  dot: string;
+  border: string;
+}[] = [
+  { key: "DO",       label: "Do First",  sublabel: "Important & Urgent",     accent: "text-red-600",    bg: "bg-red-50",    dot: "bg-red-500",    border: "border-red-200" },
+  { key: "SCHEDULE", label: "Schedule",   sublabel: "Important & Not Urgent", accent: "text-blue-600",   bg: "bg-blue-50",   dot: "bg-blue-500",   border: "border-blue-200" },
+  { key: "DELEGATE", label: "Delegate",   sublabel: "Urgent & Not Important", accent: "text-amber-600",  bg: "bg-amber-50",  dot: "bg-amber-500",  border: "border-amber-200" },
+  { key: "DELETE",   label: "Eliminate",  sublabel: "Not Important or Urgent",accent: "text-gray-500",   bg: "bg-gray-50",   dot: "bg-gray-400",   border: "border-gray-200" },
+];
+
+const quadrantFlags: Record<Quadrant, { urgent: boolean; important: boolean }> = {
+  DO:       { urgent: true,  important: true },
+  SCHEDULE: { urgent: false, important: true },
+  DELEGATE: { urgent: true,  important: false },
+  DELETE:   { urgent: false, important: false },
+};
+
+export default function MatrixPage() {
+  const { user } = useAuth();
+  const { tasks } = useTasks(user?.uid);
+  const [taskModal, setTaskModal] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [newQuadrant, setNewQuadrant] = useState<Quadrant | null>(null);
+
+  const getTaskDateTime = (task: Task): Date | null => {
+    if (!task.dueDate) return null;
+    if (task.dueTime) return new Date(`${task.dueDate}T${task.dueTime}`);
+    return new Date(`${task.dueDate}T00:00:00`);
+  };
+
+  const formatDateTime = (task: Task): string | null => {
+    if (!task.dueDate) return null;
+    const d = getTaskDateTime(task)!;
+    if (!task.dueTime) {
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+    const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `${date} • ${time}`;
+  };
+
+  const byQuadrant = (q: Quadrant) =>
+    tasks
+      .filter((t) => !t.completed && getQuadrant(t) === q)
+      .sort((a, b) => {
+        const aDt = getTaskDateTime(a);
+        const bDt = getTaskDateTime(b);
+        if (aDt && bDt) return aDt.getTime() - bDt.getTime();
+        if (aDt && !bDt) return -1;
+        if (!aDt && bDt) return 1;
+        return a.order - b.order;
+      });
+
+  const openNewInQuadrant = (q: Quadrant) => { setEditTask(null); setNewQuadrant(q); setTaskModal(true); };
+  const openEdit = (t: Task) => { setEditTask(t); setNewQuadrant(null); setTaskModal(true); };
+
+  const defaultUrgent = newQuadrant === "DO" || newQuadrant === "DELEGATE";
+  const defaultImportant = newQuadrant === "DO" || newQuadrant === "SCHEDULE";
+
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination || !user) return;
+    const destQuadrant = result.destination.droppableId as Quadrant;
+    const sourceQuadrant = result.source.droppableId as Quadrant;
+    if (destQuadrant === sourceQuadrant) return;
+
+    const task = tasks.find((t) => t.id === result.draggableId);
+    if (!task) return;
+
+    const flags = quadrantFlags[destQuadrant];
+    updateTask(user.uid, task.id, { urgent: flags.urgent, important: flags.important });
+  };
+
+  return (
+    <AppShell>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="h-full p-12">
+          <div className="grid h-full grid-cols-2 grid-rows-2 gap-5">
+            {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
+              const items = byQuadrant(key);
+              return (
+                <div key={key} className={`flex flex-col rounded-[var(--radius-lg)] ${bg} ${border} border overflow-hidden`}>
+                  {/* Quadrant header */}
+                  <div className="flex items-center justify-between px-6 py-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+                      <div>
+                        <h3 className={`text-sm font-semibold ${accent}`}>{label}</h3>
+                        <p className="text-[11px] text-[var(--text-tertiary)]">{sublabel}</p>
+                      </div>
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-[var(--radius-full)] bg-white/60 px-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+                        {items.length}
+                      </span>
+                    </div>
+                    <button
+                      className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-white/60 hover:text-[var(--text-secondary)] transition-colors"
+                      onClick={() => openNewInQuadrant(key)}
+                    >
+                      <Plus size={15} />
+                    </button>
+                  </div>
+
+                  {/* Tasks - droppable */}
+                  <Droppable droppableId={key}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`flex-1 overflow-auto px-5 pb-5 space-y-2 transition-colors ${snapshot.isDraggingOver ? "bg-white/30" : ""}`}
+                      >
+                        {items.map((t, index) => (
+                          <Draggable key={t.id} draggableId={t.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`group flex items-center gap-3 rounded-[var(--radius-md)] bg-white/70 px-5 py-3 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
+                                onClick={() => openEdit(t)}
+                              >
+                                <button
+                                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                                  onClick={(e) => { e.stopPropagation(); user && updateTask(user.uid, t.id, { completed: true }); }}
+                                />
+                                <span className="text-sm text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">
+                                  {t.title}
+                                </span>
+                      {t.dueDate && (
+                        <span className="ml-auto shrink-0 text-[11px] text-[var(--text-tertiary)]">
+                          {formatDateTime(t)}
+                        </span>
+                      )}
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {items.length === 0 && !snapshot.isDraggingOver && (
+                          <div className="flex items-center justify-center h-full min-h-[60px]">
+                            <button
+                              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+                              onClick={() => openNewInQuadrant(key)}
+                            >
+                              + Add a task
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </DragDropContext>
+
+      <TaskModal
+        open={taskModal}
+        onOpenChange={(v) => { setTaskModal(v); if (!v) setNewQuadrant(null); }}
+        task={editTask}
+        defaultUrgent={newQuadrant ? defaultUrgent : undefined}
+        defaultImportant={newQuadrant ? defaultImportant : undefined}
+      />
+    </AppShell>
+  );
+}

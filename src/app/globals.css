@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f8f9fb;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f3f5;
+  --bg-active: #e8ebef;
+  --text-primary: #1a1d21;
+  --text-secondary: #5f6368;
+  --text-tertiary: #9aa0a6;
+  --text-inverse: #ffffff;
+  --border: #e1e4e8;
+  --border-light: #eef0f2;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-light: #eef2ff;
+  --accent-muted: #c7d2fe;
+  --destructive: #ef4444;
+  --destructive-fg: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 9999px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* FullCalendar overrides */
+.fc {
+  --fc-border-color: var(--border-light);
+  --fc-today-bg-color: var(--accent-light);
+  --fc-event-border-color: transparent;
+  font-family: inherit !important;
+}
+.fc .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 600 !important; }
+.fc .fc-button {
+  border-radius: var(--radius-full) !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+  padding: 4px 14px !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+.fc .fc-button:hover { background: var(--bg-hover) !important; }
+.fc .fc-button-active {
+  background: var(--accent) !important;
+  color: var(--text-inverse) !important;
+  border-color: var(--accent) !important;
+}
+.fc .fc-daygrid-day-number { font-size: 0.8rem; font-weight: 500; padding: 6px 8px; }
+.fc .fc-event {
+  border-radius: var(--radius-sm) !important;
+  padding: 2px 6px !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+}
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
