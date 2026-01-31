@@ -68,7 +68,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
     if (!user || !title.trim()) return;
     const data = {
       title: title.trim(),
-      notes: notes.trim() || undefined,
+      notes: notes.trim() || "",
       urgent,
       important,
       dueDate: dueDate || null,
@@ -152,7 +152,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
               onChange={(e) => setGroupId(e.target.value)}
               className="flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-2 text-sm text-[var(--text-primary)]"
             >
-              <option value="">No list</option>
+              <option value="">General Tasks</option>
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}

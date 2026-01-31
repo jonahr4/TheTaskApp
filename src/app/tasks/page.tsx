@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { updateTask } from "@/lib/firestore";
+import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
 import { GroupModal } from "@/components/GroupModal";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { getQuadrant } from "@/lib/types";
 import type { Task, TaskGroup } from "@/lib/types";
 import { Plus, MoreVertical, Calendar, FolderPlus, GripVertical } from "lucide-react";
+import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 function getTaskDateTime(task: Task): Date | null {
@@ -76,6 +77,21 @@ export default function TasksPage() {
 
   const openEdit = (t: Task) => { setEditTask(t); setNewTaskGroupId(null); setTaskModal(true); };
   const openNewInGroup = (groupId: string | null) => { setEditTask(null); setNewTaskGroupId(groupId); setTaskModal(true); };
+
+  const duplicateTask = (t: Task) => {
+    if (!user) return;
+    createTask(user.uid, {
+      title: `${t.title} (copy)`,
+      notes: t.notes || "",
+      urgent: t.urgent,
+      important: t.important,
+      dueDate: t.dueDate || null,
+      dueTime: t.dueTime || null,
+      groupId: t.groupId || null,
+      completed: false,
+      order: tasks.length,
+    } as any);
+  };
 
   const quadrantVariant = (t: Task) => getQuadrant(t).toLowerCase() as "do" | "schedule" | "delegate" | "delete";
 
@@ -204,6 +220,15 @@ export default function TasksPage() {
                                     <Badge variant={quadrantVariant(t)} className="opacity-80 group-hover/row:opacity-100">
                                       {getQuadrant(t)}
                                     </Badge>
+                                    <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
+                                      <TaskRowMenu
+                                        completed={t.completed}
+                                        onEdit={() => openEdit(t)}
+                                        onDuplicate={() => duplicateTask(t)}
+                                        onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
+                                        onDelete={() => user && deleteTask(user.uid, t.id)}
+                                      />
+                                    </div>
                                   </div>
                                 )}
                               </Draggable>

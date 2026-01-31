@@ -28,7 +28,9 @@ export default function CalendarPage() {
   const events = tasks
     .filter((t) => t.dueDate)
     .map((t) => {
-      const start = t.dueTime ? `${t.dueDate}T${t.dueTime}` : t.dueDate!;
+      // Cap times at/after 23:30 to 23:00 so events don't get cut off at the bottom
+      const adjustedTime = t.dueTime && t.dueTime >= "23:30" ? "23:00" : t.dueTime;
+      const start = adjustedTime ? `${t.dueDate}T${adjustedTime}` : t.dueDate!;
       return {
         id: t.id,
         title: t.title,

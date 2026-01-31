@@ -4,10 +4,12 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
-import { updateTask } from "@/lib/firestore";
+import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
 import { getQuadrant, type Task, type Quadrant } from "@/lib/types";
+import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { Plus } from "lucide-react";
+import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 const quadrants: {
@@ -35,6 +37,7 @@ const quadrantFlags: Record<Quadrant, { urgent: boolean; important: boolean }> =
 export default function MatrixPage() {
   const { user } = useAuth();
   const { tasks } = useTasks(user?.uid);
+  const { groups } = useTaskGroups(user?.uid);
   const [taskModal, setTaskModal] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [newQuadrant, setNewQuadrant] = useState<Quadrant | null>(null);
@@ -67,6 +70,21 @@ export default function MatrixPage() {
         if (!aDt && bDt) return 1;
         return a.order - b.order;
       });
+
+  const duplicateTask = (t: Task) => {
+    if (!user) return;
+    createTask(user.uid, {
+      title: `${t.title} (copy)`,
+      notes: t.notes || "",
+      urgent: t.urgent,
+      important: t.important,
+      dueDate: t.dueDate || null,
+      dueTime: t.dueTime || null,
+      groupId: t.groupId || null,
+      completed: false,
+      order: tasks.length,
+    } as any);
+  };
 
   const openNewInQuadrant = (q: Quadrant) => { setEditTask(null); setNewQuadrant(q); setTaskModal(true); };
   const openEdit = (t: Task) => { setEditTask(t); setNewQuadrant(null); setTaskModal(true); };
@@ -141,11 +159,25 @@ export default function MatrixPage() {
                                 <span className="text-sm text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">
                                   {t.title}
                                 </span>
-                      {t.dueDate && (
-                        <span className="ml-auto shrink-0 text-[11px] text-[var(--text-tertiary)]">
-                          {formatDateTime(t)}
-                        </span>
-                      )}
+                                <span className="ml-auto shrink-0 flex items-center gap-2">
+                                  {t.dueDate && (
+                                    <span className="text-[11px] text-[var(--text-tertiary)]">
+                                      {formatDateTime(t)}
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-[var(--text-tertiary)] opacity-60">
+                                    {t.groupId ? (groups.find(g => g.id === t.groupId)?.name ?? "General Tasks") : "General Tasks"}
+                                  </span>
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <TaskRowMenu
+                                      completed={t.completed}
+                                      onEdit={() => openEdit(t)}
+                                      onDuplicate={() => duplicateTask(t)}
+                                      onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: true })}
+                                      onDelete={() => user && deleteTask(user.uid, t.id)}
+                                    />
+                                  </div>
+                                </span>
                               </div>
                             )}
                           </Draggable>
