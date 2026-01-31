@@ -55,8 +55,8 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
     } else {
       setTitle("");
       setNotes("");
-      setUrgent(defaultUrgent ?? false);
-      setImportant(defaultImportant ?? false);
+      setUrgent(defaultUrgent ?? true);
+      setImportant(defaultImportant ?? true);
       setDueDate("");
       setDueTime("");
       setGroupId(defaultGroupId || "");

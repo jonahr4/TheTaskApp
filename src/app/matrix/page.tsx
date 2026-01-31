@@ -8,7 +8,7 @@ import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
 import { getQuadrant, type Task, type Quadrant } from "@/lib/types";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Plus } from "lucide-react";
+import { Plus, SlidersHorizontal, X } from "lucide-react";
 import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
@@ -41,6 +41,26 @@ export default function MatrixPage() {
   const [taskModal, setTaskModal] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [newQuadrant, setNewQuadrant] = useState<Quadrant | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showInProgress, setShowInProgress] = useState(true);
+  const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
+
+  const toggleGroup = (id: string) => {
+    setSelectedGroups((prev) => {
+      const next = new Set(prev);
+      if (id === "__all__") {
+        if (next.has("__all__")) { next.delete("__all__"); } else { next.clear(); next.add("__all__"); }
+      } else {
+        next.delete("__all__");
+        if (next.has(id)) next.delete(id); else next.add(id);
+        if (next.size === 0) next.add("__all__");
+      }
+      return next;
+    });
+  };
+
+  const allGroupsSelected = selectedGroups.has("__all__");
 
   const getTaskDateTime = (task: Task): Date | null => {
     if (!task.dueDate) return null;
@@ -61,7 +81,16 @@ export default function MatrixPage() {
 
   const byQuadrant = (q: Quadrant) =>
     tasks
-      .filter((t) => !t.completed && getQuadrant(t) === q)
+      .filter((t) => {
+        if (getQuadrant(t) !== q) return false;
+        if (t.completed && !showCompleted) return false;
+        if (!t.completed && !showInProgress) return false;
+        if (!allGroupsSelected) {
+          const gId = t.groupId || "__general__";
+          if (!selectedGroups.has(gId)) return false;
+        }
+        return true;
+      })
       .sort((a, b) => {
         const aDt = getTaskDateTime(a);
         const bDt = getTaskDateTime(b);
@@ -108,7 +137,63 @@ export default function MatrixPage() {
   return (
     <AppShell>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="h-full p-12">
+        <div className="h-full p-12 relative">
+          {/* Filter toggle */}
+          <button
+            className="absolute top-4 right-4 z-10 flex h-8 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
+            onClick={() => setFilterOpen(!filterOpen)}
+          >
+            <SlidersHorizontal size={13} />
+            Filters
+            {(!showInProgress || showCompleted || !allGroupsSelected) && (
+              <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
+            )}
+          </button>
+
+          {/* Filter sidebar */}
+          <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-light)]">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Filters</h3>
+              <button onClick={() => setFilterOpen(false)} className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-5">
+              {/* Status */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Status</p>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showInProgress} onChange={() => setShowInProgress(!showInProgress)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">In progress</span>
+                </label>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted(!showCompleted)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">Completed</span>
+                </label>
+              </div>
+              {/* Lists */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Lists</p>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={allGroupsSelected} onChange={() => toggleGroup("__all__")} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">All lists</span>
+                </label>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={allGroupsSelected || selectedGroups.has("__general__")} onChange={() => toggleGroup("__general__")} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">General Tasks</span>
+                </label>
+                {groups.map((g) => (
+                  <label key={g.id} className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                    <input type="checkbox" checked={allGroupsSelected || selectedGroups.has(g.id)} onChange={() => toggleGroup(g.id)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                    <span className="text-sm text-[var(--text-primary)]">{g.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Backdrop */}
+          {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
+
           <div className="grid h-full grid-cols-2 grid-rows-2 gap-5">
             {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
               const items = byQuadrant(key);
@@ -154,9 +239,11 @@ export default function MatrixPage() {
                               >
                                 <button
                                   className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-colors"
-                                  onClick={(e) => { e.stopPropagation(); user && updateTask(user.uid, t.id, { completed: true }); }}
-                                />
-                                <span className="text-sm text-[var(--text-primary)] group-hover:text-[var(--accent)] transition-colors truncate">
+                                  onClick={(e) => { e.stopPropagation(); user && updateTask(user.uid, t.id, { completed: !t.completed }); }}
+                                >
+                                  {t.completed && <div className="h-2 w-2 rounded-[1px] bg-[var(--accent)]" />}
+                                </button>
+                                <span className={`text-sm transition-colors truncate ${t.completed ? "line-through text-[var(--text-tertiary)]" : "text-[var(--text-primary)] group-hover:text-[var(--accent)]"}`}>
                                   {t.title}
                                 </span>
                                 <span className="ml-auto shrink-0 flex items-center gap-2">
@@ -173,7 +260,7 @@ export default function MatrixPage() {
                                       completed={t.completed}
                                       onEdit={() => openEdit(t)}
                                       onDuplicate={() => duplicateTask(t)}
-                                      onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: true })}
+                                      onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
                                       onDelete={() => user && deleteTask(user.uid, t.id)}
                                     />
                                   </div>
