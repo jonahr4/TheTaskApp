@@ -200,7 +200,7 @@ export default function MatrixPage() {
               return (
                 <div key={key} className={`flex flex-col rounded-[var(--radius-lg)] ${bg} ${border} border overflow-hidden`}>
                   {/* Quadrant header */}
-                  <div className="flex items-center justify-between px-6 py-5">
+                  <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className={`h-2.5 w-2.5 rounded-full ${dot}`} />
                       <div>
@@ -225,7 +225,7 @@ export default function MatrixPage() {
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex-1 overflow-auto px-5 pb-5 space-y-2 transition-colors ${snapshot.isDraggingOver ? "bg-white/30" : ""}`}
+                        className={`flex-1 overflow-auto px-3 pb-3 space-y-1 transition-colors ${snapshot.isDraggingOver ? "bg-white/30" : ""}`}
                       >
                         {items.map((t, index) => (
                           <Draggable key={t.id} draggableId={t.id} index={index}>
@@ -234,7 +234,7 @@ export default function MatrixPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`group flex items-center gap-3 rounded-[var(--radius-md)] bg-white/70 px-5 py-3 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
+                                className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-white/70 px-3 py-1.5 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
                                 onClick={() => openEdit(t)}
                               >
                                 <button
@@ -243,7 +243,7 @@ export default function MatrixPage() {
                                 >
                                   {t.completed && <div className="h-2 w-2 rounded-[1px] bg-[var(--accent)]" />}
                                 </button>
-                                <span className={`text-sm transition-colors truncate ${t.completed ? "line-through text-[var(--text-tertiary)]" : "text-[var(--text-primary)] group-hover:text-[var(--accent)]"}`}>
+                                <span className={`text-xs transition-colors truncate ${t.completed ? "line-through text-[var(--text-tertiary)]" : "text-[var(--text-primary)] group-hover:text-[var(--accent)]"}`}>
                                   {t.title}
                                 </span>
                                 <span className="ml-auto shrink-0 flex items-center gap-2">
