@@ -74,11 +74,10 @@ export async function GET(
     if (t.completed) descParts.push("Status: Completed");
 
     if (t.dueTime) {
-      // Timed event: 30-minute block ending at due time
-      // Parse as minutes to avoid timezone issues with Date
+      // Timed event: 1-hour block ending at due time
       const [h, m] = t.dueTime.split(":").map(Number);
       const dueMinutes = h * 60 + m;
-      const startMinutes = dueMinutes - 30;
+      const startMinutes = dueMinutes - 60;
       const startH = Math.floor((startMinutes + 1440) % 1440 / 60);
       const startM = ((startMinutes % 60) + 60) % 60;
       const startTime = `${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`;
