@@ -61,7 +61,14 @@ export async function GET(
 
     const descParts: string[] = [];
     if (t.notes) descParts.push(t.notes);
-    descParts.push(`Due: ${t.dueDate}${t.dueTime ? " at " + t.dueTime : ""}`);
+    let dueStr = t.dueDate;
+    if (t.dueTime) {
+      const [hh, mm] = t.dueTime.split(":").map(Number);
+      const period = hh >= 12 ? "PM" : "AM";
+      const h12 = hh % 12 || 12;
+      dueStr += ` at ${h12}:${String(mm).padStart(2, "0")} ${period}`;
+    }
+    descParts.push(`Due: ${dueStr}`);
     descParts.push(`Priority: ${quadrant}`);
     descParts.push(`List: ${groupName}`);
     if (t.completed) descParts.push("Status: Completed");
