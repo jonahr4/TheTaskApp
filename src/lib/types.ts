@@ -9,6 +9,7 @@ export type Task = {
   dueDate: string | null;
   dueTime: string | null;
   groupId: string | null;
+  autoUrgentDays: number | null;
   completed: boolean;
   order: number;
   createdAt: Timestamp;

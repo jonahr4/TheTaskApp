@@ -41,6 +41,8 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
   const [dueTime, setDueTime] = useState("");
   const [groupId, setGroupId] = useState("");
   const [completed, setCompleted] = useState(false);
+  const [autoUrgentDays, setAutoUrgentDays] = useState<string>("off");
+  const [customDays, setCustomDays] = useState("");
 
   useEffect(() => {
     if (task) {
@@ -52,6 +54,12 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setDueTime(task.dueTime || "");
       setGroupId(task.groupId || "");
       setCompleted(task.completed);
+      const days = task.autoUrgentDays;
+      if (days == null) { setAutoUrgentDays("off"); setCustomDays(""); }
+      else if (days === 1) { setAutoUrgentDays("1"); setCustomDays(""); }
+      else if (days === 2) { setAutoUrgentDays("2"); setCustomDays(""); }
+      else if (days === 7) { setAutoUrgentDays("7"); setCustomDays(""); }
+      else { setAutoUrgentDays("custom"); setCustomDays(String(days)); }
     } else {
       setTitle("");
       setNotes("");
@@ -61,6 +69,8 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setDueTime("");
       setGroupId(defaultGroupId || "");
       setCompleted(false);
+      setAutoUrgentDays("off");
+      setCustomDays("");
     }
   }, [task, open, defaultGroupId, defaultUrgent, defaultImportant]);
 
@@ -74,6 +84,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       dueDate: dueDate || null,
       dueTime: dueTime || null,
       groupId: groupId || null,
+      autoUrgentDays: autoUrgentDays === "off" ? null : autoUrgentDays === "custom" ? (parseInt(customDays) || null) : parseInt(autoUrgentDays),
       completed,
       order: task ? task.order : tasks.length,
     };
@@ -170,6 +181,38 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
               ))}
             </select>
           </div>
+          {dueDate && (
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Auto-urgent</label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={autoUrgentDays}
+                  onChange={(e) => setAutoUrgentDays(e.target.value)}
+                  className="flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-2 text-sm text-[var(--text-primary)]"
+                >
+                  <option value="off">Off</option>
+                  <option value="1">1 day before</option>
+                  <option value="2">2 days before</option>
+                  <option value="7">1 week before</option>
+                  <option value="custom">Custom</option>
+                </select>
+                {autoUrgentDays === "custom" && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={customDays}
+                      onChange={(e) => setCustomDays(e.target.value)}
+                      placeholder="Days"
+                      className="w-20"
+                    />
+                    <span className="text-xs text-[var(--text-tertiary)]">days</span>
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-[10px] text-[var(--text-tertiary)]">Automatically mark as urgent before due date</p>
+            </div>
+          )}
         </div>
       </DialogBody>
 

@@ -8,6 +8,8 @@ import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check } fro
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getOrCreateCalendarToken } from "@/lib/firestore";
+import { useTasks } from "@/hooks/useTasks";
+import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 
 const navItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -17,6 +19,8 @@ const navItems = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, logOut } = useAuth();
+  const { tasks } = useTasks(user?.uid);
+  useAutoUrgent(user?.uid, tasks);
   const router = useRouter();
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
