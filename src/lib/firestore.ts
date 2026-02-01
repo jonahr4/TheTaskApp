@@ -90,6 +90,7 @@ export async function getOrCreateCalendarToken(uid: string): Promise<string> {
     return snap.data().calendarToken as string;
   }
   const token = crypto.randomUUID();
-  await setDoc(ref, { calendarToken: token, uid }, { merge: true });
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  await setDoc(ref, { calendarToken: token, uid, timezone }, { merge: true });
   return token;
 }

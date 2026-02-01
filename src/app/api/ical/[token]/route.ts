@@ -21,6 +21,7 @@ export async function GET(
 
   const userDoc = usersSnap.docs[0];
   const uid = userDoc.data().uid || userDoc.id;
+  const userTimezone = userDoc.data().timezone || "America/New_York";
 
   // Fetch tasks
   const tasksSnap = await adminDb
@@ -48,6 +49,7 @@ export async function GET(
     method: ICalCalendarMethod.PUBLISH,
     prodId: { company: "TaskApp", product: "TaskApp Calendar" },
     ttl: 900, // suggest 15-minute refresh
+    timezone: userTimezone,
   });
 
   tasksSnap.forEach((doc) => {
@@ -65,15 +67,21 @@ export async function GET(
     if (t.completed) descParts.push("Status: Completed");
 
     if (t.dueTime) {
-      // Timed event: 15-minute block
-      const start = new Date(new Date(`${t.dueDate}T${t.dueTime}`).getTime() -  30 * 60 * 1000);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      // Timed event: 30-minute block ending at due time
+      // Parse as minutes to avoid timezone issues with Date
+      const [h, m] = t.dueTime.split(":").map(Number);
+      const dueMinutes = h * 60 + m;
+      const startMinutes = dueMinutes - 30;
+      const startH = Math.floor((startMinutes + 1440) % 1440 / 60);
+      const startM = ((startMinutes % 60) + 60) % 60;
+      const startTime = `${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`;
       cal.createEvent({
         id: doc.id,
         summary: `${t.title}- ${groupName}`,
         description: descParts.join("\n"),
-        start,
-        end,
+        start: `${t.dueDate}T${startTime}:00`,
+        end: `${t.dueDate}T${t.dueTime}:00`,
+        timezone: userTimezone,
         status: t.completed ? ICalEventStatus.CONFIRMED : undefined,
       });
     } else {
@@ -83,7 +91,8 @@ export async function GET(
         summary: `${t.title}- ${groupName}`,
         description: descParts.join("\n"),
         allDay: true,
-        start: new Date(`${t.dueDate}T00:00:00`),
+        start: `${t.dueDate}T00:00:00`,
+        timezone: userTimezone,
         status: t.completed ? ICalEventStatus.CONFIRMED : undefined,
       });
     }
