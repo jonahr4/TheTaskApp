@@ -59,17 +59,18 @@ export async function GET(
 
     const descParts: string[] = [];
     if (t.notes) descParts.push(t.notes);
+    descParts.push(`Due: ${t.dueDate}${t.dueTime ? " at " + t.dueTime : ""}`);
     descParts.push(`Priority: ${quadrant}`);
     descParts.push(`List: ${groupName}`);
     if (t.completed) descParts.push("Status: Completed");
 
     if (t.dueTime) {
       // Timed event: 15-minute block
-      const start = new Date(`${t.dueDate}T${t.dueTime}`);
-      const end = new Date(start.getTime() + 15 * 60 * 1000);
+      const start = new Date(new Date(`${t.dueDate}T${t.dueTime}`).getTime() -  30 * 60 * 1000);
+      const end = new Date(start.getTime() + 30 * 60 * 1000);
       cal.createEvent({
         id: doc.id,
-        summary: t.title,
+        summary: `${t.title}- ${groupName}`,
         description: descParts.join("\n"),
         start,
         end,
@@ -79,7 +80,7 @@ export async function GET(
       // All-day event
       cal.createEvent({
         id: doc.id,
-        summary: t.title,
+        summary: `${t.title}- ${groupName}`,
         description: descParts.join("\n"),
         allDay: true,
         start: new Date(`${t.dueDate}T00:00:00`),
