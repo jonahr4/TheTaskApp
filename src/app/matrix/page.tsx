@@ -137,10 +137,10 @@ export default function MatrixPage() {
   return (
     <AppShell>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="h-full p-12 relative">
+        <div className="h-full p-6 sm:p-8 lg:p-12 relative">
           {/* Filter toggle */}
           <button
-            className="absolute top-4 right-4 z-10 flex h-8 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
+            className="absolute top-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors sm:top-4 sm:right-4"
             onClick={() => setFilterOpen(!filterOpen)}
           >
             <SlidersHorizontal size={13} />
@@ -194,7 +194,7 @@ export default function MatrixPage() {
           {/* Backdrop */}
           {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
 
-          <div className="grid h-full grid-cols-2 grid-rows-2 gap-5">
+          <div className="grid h-full grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
             {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
               const items = byQuadrant(key);
               return (

@@ -4,6 +4,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
   serverTimestamp,
   query,
   orderBy,
@@ -77,4 +79,17 @@ export async function updateGroup(
 
 export async function deleteGroup(uid: string, groupId: string) {
   return deleteDoc(doc(db, "users", uid, "taskGroups", groupId));
+}
+
+// --- Calendar Token ---
+
+export async function getOrCreateCalendarToken(uid: string): Promise<string> {
+  const ref = doc(db, "users", uid);
+  const snap = await getDoc(ref);
+  if (snap.exists() && snap.data().calendarToken) {
+    return snap.data().calendarToken as string;
+  }
+  const token = crypto.randomUUID();
+  await setDoc(ref, { calendarToken: token, uid }, { merge: true });
+  return token;
 }

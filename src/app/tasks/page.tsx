@@ -119,9 +119,9 @@ export default function TasksPage() {
   return (
     <AppShell>
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="h-full flex flex-col py-12 px-12">
+        <div className="h-full flex flex-col py-8 px-4 sm:px-6 md:py-12 md:px-12">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 w-full">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 w-full">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">All Tasks</h2>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setEditGroup(null); setGroupModal(true); }}>
@@ -134,12 +134,12 @@ export default function TasksPage() {
           </div>
 
           {/* Cards grid */}
-          <div className="flex-1 overflow-x-auto w-full">
-            <div className="flex gap-5 pb-6 h-full">
+          <div className="flex-1 overflow-x-visible md:overflow-x-auto w-full">
+            <div className="flex flex-col md:flex-row gap-5 pb-6 h-full">
               {cards.map((c) => {
                 const droppableId = c.id ?? "general";
                 return (
-                  <div key={droppableId} className="w-[25rem] shrink-0 flex flex-col rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
+                  <div key={droppableId} className="w-full md:w-[25rem] shrink-0 flex flex-col rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
                     {/* Card header */}
                     <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-light)]">
                       <div className="flex items-center gap-2">

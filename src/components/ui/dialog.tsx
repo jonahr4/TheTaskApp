@@ -19,12 +19,12 @@ export function Dialog({
   if (!open) return null;
   return (
     <Ctx.Provider value={{ open, onClose: () => onOpenChange(false) }}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-10">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-10">
         <div
           className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
           onClick={() => onOpenChange(false)}
         />
-        <div className="relative z-50 w-full max-w-md rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] p-0 shadow-[var(--shadow-lg)]">
+        <div className="relative z-50 h-full w-full max-w-none rounded-none border border-[var(--border-light)] bg-[var(--bg-card)] p-0 shadow-[var(--shadow-lg)] sm:h-auto sm:max-w-md sm:rounded-[var(--radius-lg)]">
           {children}
         </div>
       </div>
@@ -35,7 +35,7 @@ export function Dialog({
 export function DialogHeader({ children, className }: { children: ReactNode; className?: string }) {
   const { onClose } = useContext(Ctx);
   return (
-    <div className={cn("flex items-center justify-between px-10 pt-8 pb-0", className)}>
+    <div className={cn("flex items-center justify-between px-6 pt-6 pb-0 sm:px-10 sm:pt-8", className)}>
       <div>{children}</div>
       <button
         onClick={onClose}
@@ -52,12 +52,12 @@ export function DialogTitle({ children }: { children: ReactNode }) {
 }
 
 export function DialogBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("px-10 py-7", className)}>{children}</div>;
+  return <div className={cn("px-6 py-6 sm:px-10 sm:py-7", className)}>{children}</div>;
 }
 
 export function DialogFooter({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex items-center justify-end gap-3 border-t border-[var(--border-light)] px-10 py-7", className)}>
+    <div className={cn("flex items-center justify-end gap-3 border-t border-[var(--border-light)] px-6 py-5 sm:px-10 sm:py-7", className)}>
       {children}
     </div>
   );

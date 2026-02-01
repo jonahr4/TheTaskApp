@@ -44,8 +44,8 @@ export default function CalendarPage() {
 
   return (
     <AppShell>
-      <div className="h-full p-12">
-        <div className="h-full rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] p-8 shadow-[var(--shadow-sm)]">
+      <div className="h-full p-6 sm:p-8 lg:p-12">
+        <div className="h-full rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] p-4 sm:p-6 lg:p-8 shadow-[var(--shadow-sm)]">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"

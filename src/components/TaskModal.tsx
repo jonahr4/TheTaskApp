@@ -110,7 +110,19 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
 
         <div>
           <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Priority</label>
-          <div className="grid grid-cols-2 gap-2">
+          <select
+            value={miniQuadrants.find((q) => urgent === q.urgent && important === q.important)?.key ?? "DO"}
+            onChange={(e) => {
+              const next = miniQuadrants.find((q) => q.key === e.target.value);
+              if (next) { setUrgent(next.urgent); setImportant(next.important); }
+            }}
+            className="flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-2 text-sm text-[var(--text-primary)] sm:hidden"
+          >
+            {miniQuadrants.map((q) => (
+              <option key={q.key} value={q.key}>{q.label}</option>
+            ))}
+          </select>
+          <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-2">
             {miniQuadrants.map((q) => {
               const selected = urgent === q.urgent && important === q.important;
               return (
@@ -136,7 +148,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Due Date</label>
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
@@ -145,7 +157,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
             <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Time</label>
             <Input type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">List</label>
             <select
               value={groupId}
