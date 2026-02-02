@@ -72,6 +72,7 @@ export async function GET(
     descParts.push(`Priority: ${quadrant}`);
     descParts.push(`List: ${groupName}`);
     if (t.completed) descParts.push("Status: Completed");
+    descParts.push(`\nEdit task: https://the-task-app.vercel.app/matrix?task=${doc.id}`);
 
     if (t.dueTime) {
       // Timed event: 1-hour block ending at due time
