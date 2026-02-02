@@ -45,16 +45,24 @@ export default function MatrixPage() {
   const [showCompleted, setShowCompleted] = useState(true);
   const [showInProgress, setShowInProgress] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
+  const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
+
+  const allGroupIds = ["__general__", ...groups.map((g) => g.id)];
 
   const toggleGroup = (id: string) => {
     setSelectedGroups((prev) => {
-      const next = new Set(prev);
       if (id === "__all__") {
-        if (next.has("__all__")) { next.delete("__all__"); } else { next.clear(); next.add("__all__"); }
-      } else {
-        next.delete("__all__");
-        if (next.has(id)) next.delete(id); else next.add(id);
-        if (next.size === 0) next.add("__all__");
+        if (prev.has("__all__")) return new Set<string>();
+        return new Set(["__all__"]);
+      }
+      if (prev.has("__all__")) {
+        const next = new Set(allGroupIds.filter((g) => g !== id));
+        return next;
+      }
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.size === allGroupIds.length && allGroupIds.every((g) => next.has(g))) {
+        return new Set(["__all__"]);
       }
       return next;
     });
@@ -93,6 +101,14 @@ export default function MatrixPage() {
       })
       .sort((a, b) => {
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (sortBy === "alpha") return a.title.localeCompare(b.title);
+        if (sortBy === "createdAt") return (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0);
+        if (sortBy === "updatedAt") return (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0);
+        if (sortBy === "priority") {
+          const pOrder: Record<Quadrant, number> = { DO: 0, SCHEDULE: 1, DELEGATE: 2, DELETE: 3 };
+          const diff = pOrder[getQuadrant(a)] - pOrder[getQuadrant(b)];
+          if (diff !== 0) return diff;
+        }
         const aDt = getTaskDateTime(a);
         const bDt = getTaskDateTime(b);
         if (aDt && bDt) return aDt.getTime() - bDt.getTime();
@@ -139,17 +155,44 @@ export default function MatrixPage() {
     <AppShell>
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="h-full p-6 sm:p-8 lg:p-12 relative">
-          {/* Filter toggle */}
-          <button
-            className="absolute top-3 right-3 z-10 flex h-8 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors sm:top-4 sm:right-4"
-            onClick={() => setFilterOpen(!filterOpen)}
-          >
-            <SlidersHorizontal size={13} />
-            Filters
-            {(!showInProgress || !showCompleted || !allGroupsSelected) && (
-              <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
-            )}
-          </button>
+          {/* Top bar: list pills + filter button */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex gap-2 overflow-x-auto flex-1 pb-0.5">
+              <button
+                onClick={() => toggleGroup("__all__")}
+                className={`px-3.5 py-1.5 rounded-[var(--radius-md)] text-xs font-medium whitespace-nowrap transition-all ${allGroupsSelected ? "bg-[var(--accent)] text-white border border-transparent shadow-[var(--shadow-sm)]" : "bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-light)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-sm)]"}`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => toggleGroup("__general__")}
+                className={`px-3.5 py-1.5 rounded-[var(--radius-md)] text-xs font-medium whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${allGroupsSelected || selectedGroups.has("__general__") ? "bg-[var(--accent)] text-white border border-transparent shadow-[var(--shadow-sm)]" : "bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-light)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-sm)]"}`}
+              >
+                <span className="h-2 w-2 rounded-full shrink-0 bg-slate-400" />
+                General Tasks
+              </button>
+              {groups.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => toggleGroup(g.id)}
+                  className={`px-3.5 py-1.5 rounded-[var(--radius-md)] text-xs font-medium whitespace-nowrap transition-all inline-flex items-center gap-1.5 ${allGroupsSelected || selectedGroups.has(g.id) ? "bg-[var(--accent)] text-white border border-transparent shadow-[var(--shadow-sm)]" : "bg-[var(--bg-card)] text-[var(--text-secondary)] border border-[var(--border-light)] hover:bg-[var(--bg-hover)] shadow-[var(--shadow-sm)]"}`}
+                >
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: g.color || "#6366f1" }} />
+                  {g.name}
+                </button>
+              ))}
+            </div>
+            <button
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
+              onClick={() => setFilterOpen(!filterOpen)}
+            >
+              <SlidersHorizontal size={13} />
+              Filters
+              {(!showInProgress || !showCompleted) && (
+                <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
+              )}
+            </button>
+          </div>
 
           {/* Filter sidebar */}
           <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
@@ -171,6 +214,16 @@ export default function MatrixPage() {
                   <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted(!showCompleted)} className="accent-[var(--accent)] h-3.5 w-3.5" />
                   <span className="text-sm text-[var(--text-primary)]">Completed</span>
                 </label>
+              </div>
+              {/* Sort */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Sort by</p>
+                {([["dueDate", "Due date"], ["createdAt", "Date created"], ["updatedAt", "Last updated"], ["alpha", "Alphabetical"], ["priority", "Priority"]] as const).map(([value, label]) => (
+                  <label key={value} className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                    <input type="radio" name="sortBy" checked={sortBy === value} onChange={() => setSortBy(value)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                    <span className="text-sm text-[var(--text-primary)]">{label}</span>
+                  </label>
+                ))}
               </div>
               {/* Lists */}
               <div>
@@ -195,7 +248,7 @@ export default function MatrixPage() {
           {/* Backdrop */}
           {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
 
-          <div className="grid h-full grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
+          <div className="grid h-[calc(100%-3rem)] grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
             {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
               const items = byQuadrant(key);
               return (

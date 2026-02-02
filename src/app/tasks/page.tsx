@@ -11,8 +11,8 @@ import { GroupModal } from "@/components/GroupModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getQuadrant } from "@/lib/types";
-import type { Task, TaskGroup } from "@/lib/types";
-import { Plus, MoreVertical, Calendar, FolderPlus, GripVertical } from "lucide-react";
+import type { Task, TaskGroup, Quadrant } from "@/lib/types";
+import { Plus, MoreVertical, Calendar, FolderPlus, GripVertical, SlidersHorizontal, X } from "lucide-react";
 import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
@@ -52,10 +52,19 @@ export default function TasksPage() {
   const [groupModal, setGroupModal] = useState(false);
   const [editGroup, setEditGroup] = useState<TaskGroup | null>(null);
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
 
-  const sortByDateTime = (a: Task, b: Task) => {
-    // Completed tasks sink to the bottom
+  const sortTasks = (a: Task, b: Task) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    if (sortBy === "alpha") return a.title.localeCompare(b.title);
+    if (sortBy === "createdAt") return (a.createdAt?.toMillis() ?? 0) - (b.createdAt?.toMillis() ?? 0);
+    if (sortBy === "updatedAt") return (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0);
+    if (sortBy === "priority") {
+      const pOrder: Record<Quadrant, number> = { DO: 0, SCHEDULE: 1, DELEGATE: 2, DELETE: 3 };
+      const diff = pOrder[getQuadrant(a)] - pOrder[getQuadrant(b)];
+      if (diff !== 0) return diff;
+    }
     const aDt = getTaskDateTime(a);
     const bDt = getTaskDateTime(b);
     if (aDt && bDt) return aDt.getTime() - bDt.getTime();
@@ -64,7 +73,7 @@ export default function TasksPage() {
     return a.order - b.order;
   };
 
-  const ungrouped = tasks.filter((t) => !t.groupId).sort(sortByDateTime);
+  const ungrouped = tasks.filter((t) => !t.groupId).sort(sortTasks);
   const groupMap = new Map<string, Task[]>();
   for (const t of tasks) {
     if (t.groupId) {
@@ -74,7 +83,7 @@ export default function TasksPage() {
     }
   }
   for (const [groupId, arr] of groupMap.entries()) {
-    groupMap.set(groupId, arr.sort(sortByDateTime));
+    groupMap.set(groupId, arr.sort(sortTasks));
   }
 
   const openEdit = (t: Task) => { setEditTask(t); setNewTaskGroupId(null); setTaskModal(true); };
@@ -97,9 +106,9 @@ export default function TasksPage() {
 
   const quadrantVariant = (t: Task) => getQuadrant(t).toLowerCase() as "do" | "schedule" | "delegate" | "delete";
 
-  const cards: { id: string | null; name: string; tasks: Task[] }[] = [
-    { id: null, name: "General Tasks", tasks: ungrouped },
-    ...groups.map((g) => ({ id: g.id, name: g.name, tasks: groupMap.get(g.id) || [] })),
+  const cards: { id: string | null; name: string; color: string; tasks: Task[] }[] = [
+    { id: null, name: "General Tasks", color: "#64748b", tasks: ungrouped },
+    ...groups.map((g) => ({ id: g.id, name: g.name, color: g.color || "#6366f1", tasks: groupMap.get(g.id) || [] })),
   ];
 
   const onDragEnd = (result: DropResult) => {
@@ -124,7 +133,16 @@ export default function TasksPage() {
         <div className="h-full flex flex-col py-8 px-4 sm:px-6 md:py-12 md:px-12">
           {/* Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 w-full">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">All Tasks</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">All Tasks</h2>
+              <button
+                className="flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-2.5 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <SlidersHorizontal size={12} />
+                Sort
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setEditGroup(null); setGroupModal(true); }}>
                 <FolderPlus size={14} /> New list
@@ -134,6 +152,28 @@ export default function TasksPage() {
               </Button>
             </div>
           </div>
+
+          {/* Sort sidebar */}
+          <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-light)]">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort</h3>
+              <button onClick={() => setFilterOpen(false)} className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-5">
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Sort by</p>
+                {([["dueDate", "Due date"], ["createdAt", "Date created"], ["updatedAt", "Last updated"], ["alpha", "Alphabetical"], ["priority", "Priority"]] as const).map(([value, label]) => (
+                  <label key={value} className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                    <input type="radio" name="taskSortBy" checked={sortBy === value} onChange={() => setSortBy(value)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                    <span className="text-sm text-[var(--text-primary)]">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
 
           {/* Cards grid */}
           <div className="flex-1 overflow-x-visible md:overflow-x-auto w-full">
@@ -145,6 +185,13 @@ export default function TasksPage() {
                     {/* Card header */}
                     <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-light)]">
                       <div className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-full shrink-0 cursor-pointer hover:scale-125 transition-transform"
+                          style={{ backgroundColor: c.color }}
+                          onClick={() => {
+                            if (c.id) { const g = groups.find((g) => g.id === c.id); if (g) { setEditGroup(g); setGroupModal(true); } }
+                          }}
+                        />
                         <h3
                           className="text-sm font-semibold text-[var(--text-primary)] cursor-pointer hover:text-[var(--accent)] transition-colors"
                           onClick={() => {

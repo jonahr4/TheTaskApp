@@ -26,9 +26,11 @@ type Props = {
   defaultGroupId?: string | null;
   defaultUrgent?: boolean;
   defaultImportant?: boolean;
+  defaultDueDate?: string | null;
+  defaultDueTime?: string | null;
 };
 
-export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrgent, defaultImportant }: Props) {
+export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate, defaultDueTime }: Props) {
   const { user } = useAuth();
   const { groups } = useTaskGroups(user?.uid);
   const { tasks } = useTasks(user?.uid);
@@ -65,14 +67,14 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setNotes("");
       setUrgent(defaultUrgent ?? true);
       setImportant(defaultImportant ?? true);
-      setDueDate("");
-      setDueTime("");
+      setDueDate(defaultDueDate || "");
+      setDueTime(defaultDueTime || "");
       setGroupId(defaultGroupId || "");
       setCompleted(false);
       setAutoUrgentDays("off");
       setCustomDays("");
     }
-  }, [task, open, defaultGroupId, defaultUrgent, defaultImportant]);
+  }, [task, open, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate, defaultDueTime]);
 
   const handleSave = async () => {
     if (!user || !title.trim()) return;
@@ -214,6 +216,18 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
             </div>
           )}
         </div>
+
+        {/* Completed toggle */}
+        <label className="flex items-center gap-2.5 cursor-pointer">
+          <button
+            type="button"
+            onClick={() => setCompleted(!completed)}
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border-2 transition-all ${completed ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border)] hover:border-[var(--accent)]"}`}
+          >
+            {completed && <Check size={12} className="text-white" strokeWidth={3} />}
+          </button>
+          <span className="text-sm text-[var(--text-primary)]">Completed</span>
+        </label>
       </DialogBody>
 
       <DialogFooter>

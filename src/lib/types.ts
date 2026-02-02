@@ -19,6 +19,7 @@ export type Task = {
 export type TaskGroup = {
   id: string;
   name: string;
+  color: string | null;
   order: number;
   createdAt: Timestamp;
 };
