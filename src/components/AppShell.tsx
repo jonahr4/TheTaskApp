@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check } from "lucide-react";
+import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getOrCreateCalendarToken } from "@/lib/firestore";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/matrix", label: "Matrix", icon: Grid3X3 },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/ai", label: "AI", icon: Sparkles },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

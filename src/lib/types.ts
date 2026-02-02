@@ -6,6 +6,7 @@ export type Task = {
   notes?: string;
   urgent: boolean;
   important: boolean;
+  reminder?: boolean;
   dueDate: string | null;
   dueTime: string | null;
   groupId: string | null;
