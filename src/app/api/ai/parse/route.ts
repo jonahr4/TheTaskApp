@@ -2,15 +2,18 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
-type AiParseResult = {
+type AiTask = {
   title: string;
   notes: string;
   dueDate: string | null;
   dueTime: string | null;
-  reminder: boolean;
-  urgent: boolean;
-  important: boolean;
+  priority: "DO" | "SCHEDULE" | "DELEGATE" | "DELETE";
+  group: string | null;
   timeSource: "explicit" | "guessed" | "none";
+};
+
+type AiParseResult = {
+  tasks: AiTask[];
 };
 
 function firstJsonObject(text: string): string | null {
@@ -20,30 +23,39 @@ function firstJsonObject(text: string): string | null {
   return text.slice(start, end + 1);
 }
 
-function normalizeResult(raw: Partial<AiParseResult>): AiParseResult {
+function normalizeTask(raw: Partial<AiTask>): AiTask {
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
   const notes = typeof raw.notes === "string" ? raw.notes.trim() : "";
   const dueDate = typeof raw.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.dueDate) ? raw.dueDate : null;
   const dueTime = typeof raw.dueTime === "string" && /^\d{2}:\d{2}$/.test(raw.dueTime) ? raw.dueTime : null;
   const timeSource = raw.timeSource === "explicit" || raw.timeSource === "guessed" ? raw.timeSource : "none";
+  const priority =
+    raw.priority === "SCHEDULE" || raw.priority === "DELEGATE" || raw.priority === "DELETE" ? raw.priority : "DO";
+  const group = typeof raw.group === "string" && raw.group.trim() ? raw.group.trim() : null;
   return {
     title,
     notes,
     dueDate,
     dueTime: dueDate ? dueTime : null,
-    reminder: Boolean(raw.reminder),
-    urgent: Boolean(raw.urgent),
-    important: Boolean(raw.important),
+    priority,
+    group,
     timeSource: dueDate ? (dueTime ? timeSource : "none") : "none",
   };
 }
 
+function normalizeResult(raw: any): AiParseResult {
+  const tasksRaw = Array.isArray(raw?.tasks) ? raw.tasks : raw ? [raw] : [];
+  const tasks = tasksRaw.map((t: Partial<AiTask>) => normalizeTask(t)).slice(0, 3);
+  return { tasks };
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { text, today, timezone } = (await req.json()) as {
+    const { text, today, timezone, groups } = (await req.json()) as {
       text?: string;
       today?: string;
       timezone?: string;
+      groups?: string[];
     };
 
     if (!text || !text.trim()) {
@@ -63,16 +75,22 @@ export async function POST(req: NextRequest) {
 
     const system = [
       "Return ONLY valid JSON.",
-      "Fields: title, notes, dueDate (YYYY-MM-DD or null), dueTime (HH:mm or null), reminder, urgent, important, timeSource (explicit|guessed|none).",
+      "Return shape: { tasks: [ ... ] }",
+      "Each task fields: title, notes, dueDate (YYYY-MM-DD or null), dueTime (HH:mm or null), priority (DO|SCHEDULE|DELEGATE|DELETE), group (string or null), timeSource (explicit|guessed|none).",
       `Today: ${today || "unknown"}; Timezone: ${timezone || "unknown"}.`,
+      `Available groups: ${Array.isArray(groups) && groups.length ? groups.join(", ") : "none"}.`,
       "If weekday/relative date -> next valid date.",
       "If date but no time -> guess time and set timeSource=guessed.",
       "If explicit time -> timeSource=explicit.",
       "If no date -> dueDate/dueTime null, timeSource=none.",
+      "Create multiple tasks only if the prompt clearly specifies different tasks with different dates/actions.",
+      "Max 3 tasks. If more than 3 are clearly requested, group related items into at most 3 tasks.",
       "Title short; notes optional.",
+      "Priority should be inferred; default DO if unclear.",
+      "Group should be the best matching list name if provided; otherwise null.",
     ].join("\n");
 
-    const callAzure = async (maxTokens: number) => {
+    const callAzure = async (maxTokens: number, extraBody?: Record<string, unknown>) => {
       return fetch(url, {
         method: "POST",
         headers: {
@@ -82,15 +100,28 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           max_completion_tokens: maxTokens,
           response_format: { type: "json_object" },
+          reasoning_effort: "low",
           messages: [
             { role: "system", content: system },
             { role: "user", content: text.trim() },
           ],
+          ...(extraBody || {}),
         }),
       });
     };
 
     let response = await callAzure(600);
+    if (!response.ok) {
+      const errorText = await response.text();
+      if (errorText.includes("reasoning_effort")) {
+        response = await callAzure(600, { reasoning_effort: undefined });
+      } else {
+        return NextResponse.json(
+          { error: "Azure OpenAI request failed.", status: response.status, detail: errorText },
+          { status: 500 }
+        );
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -104,7 +135,13 @@ export async function POST(req: NextRequest) {
     let content = data?.choices?.[0]?.message?.content;
     const finishReason = data?.choices?.[0]?.finish_reason;
     if ((!content || typeof content !== "string") && finishReason === "length") {
-      response = await callAzure(1000);
+      const retrySystem = `${system}\nReturn JSON immediately. Do not include analysis.`;
+      response = await callAzure(800, {
+        messages: [
+          { role: "system", content: retrySystem },
+          { role: "user", content: text.trim() },
+        ],
+      });
       if (!response.ok) {
         const errorText = await response.text();
         return NextResponse.json(

@@ -12,10 +12,10 @@ import { useTasks } from "@/hooks/useTasks";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
 
 const navItems = [
-  { href: "/ai", label: "AI", icon: Sparkles },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/matrix", label: "Matrix", icon: Grid3X3 },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/ai", label: "AI", icon: Sparkles },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
