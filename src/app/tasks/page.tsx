@@ -54,6 +54,8 @@ export default function TasksPage() {
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
 
   const sortByDateTime = (a: Task, b: Task) => {
+    // Completed tasks sink to the bottom
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const aDt = getTaskDateTime(a);
     const bDt = getTaskDateTime(b);
     if (aDt && bDt) return aDt.getTime() - bDt.getTime();
@@ -190,7 +192,7 @@ export default function TasksPage() {
                                   <div
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
-                                    className={`group/row flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] px-5 py-4 transition-colors hover:bg-[var(--bg-hover)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-[var(--bg-card)] rotate-1" : ""}`}
+                                    className={`group/row flex cursor-pointer items-center gap-3 rounded-[var(--radius-md)] px-5 py-4 transition-all duration-300 hover:bg-[var(--bg-hover)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-[var(--bg-card)] rotate-1" : ""}`}
                                     onClick={() => openEdit(t)}
                                   >
                                     <div

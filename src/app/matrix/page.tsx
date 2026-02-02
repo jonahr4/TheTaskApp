@@ -42,7 +42,7 @@ export default function MatrixPage() {
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [newQuadrant, setNewQuadrant] = useState<Quadrant | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(true);
   const [showInProgress, setShowInProgress] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
 
@@ -92,6 +92,7 @@ export default function MatrixPage() {
         return true;
       })
       .sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
         const aDt = getTaskDateTime(a);
         const bDt = getTaskDateTime(b);
         if (aDt && bDt) return aDt.getTime() - bDt.getTime();
@@ -145,7 +146,7 @@ export default function MatrixPage() {
           >
             <SlidersHorizontal size={13} />
             Filters
-            {(!showInProgress || showCompleted || !allGroupsSelected) && (
+            {(!showInProgress || !showCompleted || !allGroupsSelected) && (
               <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
             )}
           </button>
