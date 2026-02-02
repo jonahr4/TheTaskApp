@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
@@ -46,6 +46,7 @@ export default function MatrixPage() {
   const [showInProgress, setShowInProgress] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
   const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
+  const [persistReady, setPersistReady] = useState(false);
 
   const allGroupIds = ["__general__", ...groups.map((g) => g.id)];
 
@@ -69,6 +70,40 @@ export default function MatrixPage() {
   };
 
   const allGroupsSelected = selectedGroups.has("__all__");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("taskapp.matrix.filters");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.showCompleted === "boolean") setShowCompleted(parsed.showCompleted);
+        if (typeof parsed.showInProgress === "boolean") setShowInProgress(parsed.showInProgress);
+        if (Array.isArray(parsed.selectedGroups)) setSelectedGroups(new Set(parsed.selectedGroups));
+        if (parsed.sortBy === "dueDate" || parsed.sortBy === "createdAt" || parsed.sortBy === "updatedAt" || parsed.sortBy === "alpha" || parsed.sortBy === "priority") {
+          setSortBy(parsed.sortBy);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    } finally {
+      setPersistReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady) return;
+    const payload = {
+      showCompleted,
+      showInProgress,
+      selectedGroups: Array.from(selectedGroups),
+      sortBy,
+    };
+    try {
+      localStorage.setItem("taskapp.matrix.filters", JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }, [persistReady, showCompleted, showInProgress, selectedGroups, sortBy]);
 
   const getTaskDateTime = (task: Task): Date | null => {
     if (!task.dueDate) return null;

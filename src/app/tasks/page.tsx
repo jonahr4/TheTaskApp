@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
@@ -54,6 +54,29 @@ export default function TasksPage() {
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
+  const [persistReady, setPersistReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("taskapp.tasks.sort");
+      if (raw === "dueDate" || raw === "createdAt" || raw === "updatedAt" || raw === "alpha" || raw === "priority") {
+        setSortBy(raw);
+      }
+    } catch {
+      // ignore storage errors
+    } finally {
+      setPersistReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady) return;
+    try {
+      localStorage.setItem("taskapp.tasks.sort", sortBy);
+    } catch {
+      // ignore storage errors
+    }
+  }, [persistReady, sortBy]);
 
   const sortTasks = (a: Task, b: Task) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;

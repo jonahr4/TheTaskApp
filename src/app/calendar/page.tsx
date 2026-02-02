@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
@@ -25,6 +25,7 @@ const quadrantLabels: { key: Quadrant; label: string; color: string }[] = [
 ];
 
 export default function CalendarPage() {
+  const calendarRef = useRef<FullCalendar>(null);
   const { user } = useAuth();
   const { tasks } = useTasks(user?.uid);
   const { groups } = useTaskGroups(user?.uid);
@@ -37,6 +38,8 @@ export default function CalendarPage() {
   const [showInProgress, setShowInProgress] = useState(true);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
   const [selectedQuadrants, setSelectedQuadrants] = useState<Set<Quadrant>>(new Set(["DO", "SCHEDULE", "DELEGATE", "DELETE"]));
+  const [calendarView, setCalendarView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
+  const [persistReady, setPersistReady] = useState(false);
 
   const allGroupsSelected = selectedGroups.has("__all__");
   const allQuadrantsSelected = selectedQuadrants.size === 4;
@@ -75,6 +78,57 @@ export default function CalendarPage() {
   };
 
   const hasActiveFilters = !showInProgress || !showCompleted || !allGroupsSelected || !allQuadrantsSelected;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("taskapp.calendar.filters");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.showCompleted === "boolean") setShowCompleted(parsed.showCompleted);
+        if (typeof parsed.showInProgress === "boolean") setShowInProgress(parsed.showInProgress);
+        if (Array.isArray(parsed.selectedGroups)) setSelectedGroups(new Set(parsed.selectedGroups));
+        if (Array.isArray(parsed.selectedQuadrants)) setSelectedQuadrants(new Set(parsed.selectedQuadrants));
+      }
+      const viewRaw = localStorage.getItem("taskapp.calendar.view");
+      if (viewRaw === "timeGridWeek" || viewRaw === "dayGridMonth") setCalendarView(viewRaw);
+    } catch {
+      // ignore storage errors
+    } finally {
+      setPersistReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady) return;
+    const payload = {
+      showCompleted,
+      showInProgress,
+      selectedGroups: Array.from(selectedGroups),
+      selectedQuadrants: Array.from(selectedQuadrants),
+    };
+    try {
+      localStorage.setItem("taskapp.calendar.filters", JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }, [persistReady, showCompleted, showInProgress, selectedGroups, selectedQuadrants]);
+
+  useEffect(() => {
+    if (!persistReady) return;
+    try {
+      localStorage.setItem("taskapp.calendar.view", calendarView);
+    } catch {
+      // ignore storage errors
+    }
+  }, [persistReady, calendarView]);
+
+  useEffect(() => {
+    if (!persistReady) return;
+    const api = calendarRef.current?.getApi();
+    if (api && api.view.type !== calendarView) {
+      api.changeView(calendarView);
+    }
+  }, [persistReady, calendarView]);
 
   const events = tasks
     .filter((t) => {
@@ -234,8 +288,9 @@ export default function CalendarPage() {
           }}
         >
           <FullCalendar
+            ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
+            initialView={calendarView}
             events={events}
             headerToolbar={{
               left: "prev,next today",
@@ -244,6 +299,11 @@ export default function CalendarPage() {
             }}
             eventTimeFormat={{ hour: "numeric", minute: "2-digit", meridiem: "short" }}
             height="100%"
+            datesSet={(arg) => {
+              if (arg.view.type === "timeGridWeek" || arg.view.type === "dayGridMonth") {
+                setCalendarView(arg.view.type);
+              }
+            }}
             eventClick={(info) => {
               const t = tasks.find((t) => t.id === info.event.id);
               if (t) { setEditTask(t); setTaskModal(true); }
