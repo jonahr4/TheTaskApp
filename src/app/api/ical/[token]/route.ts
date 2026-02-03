@@ -84,7 +84,7 @@ export async function GET(
       const startTime = `${String(startH).padStart(2, "0")}:${String(startM).padStart(2, "0")}`;
       cal.createEvent({
         id: doc.id,
-        summary: `${t.title}- ${groupName}`,
+        summary: `${t.completed ? "✅ " : ""}${t.title}- ${groupName}`,
         description: descParts.join("\n"),
         start: `${t.dueDate}T${startTime}:00`,
         end: `${t.dueDate}T${t.dueTime}:00`,
@@ -95,7 +95,7 @@ export async function GET(
       // All-day event
       cal.createEvent({
         id: doc.id,
-        summary: `${t.title}- ${groupName}`,
+        summary: `${t.completed ? "✅ " : ""}${t.title}- ${groupName}`,
         description: descParts.join("\n"),
         allDay: true,
         start: `${t.dueDate}T00:00:00`,
