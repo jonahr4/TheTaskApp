@@ -54,13 +54,20 @@ export default function TasksPage() {
   const [newTaskGroupId, setNewTaskGroupId] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [showInProgress, setShowInProgress] = useState(true);
   const [persistReady, setPersistReady] = useState(false);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("taskapp.tasks.sort");
-      if (raw === "dueDate" || raw === "createdAt" || raw === "updatedAt" || raw === "alpha" || raw === "priority") {
-        setSortBy(raw);
+      const raw = localStorage.getItem("taskapp.tasks.filters");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.sortBy === "dueDate" || parsed.sortBy === "createdAt" || parsed.sortBy === "updatedAt" || parsed.sortBy === "alpha" || parsed.sortBy === "priority") {
+          setSortBy(parsed.sortBy);
+        }
+        if (typeof parsed.showCompleted === "boolean") setShowCompleted(parsed.showCompleted);
+        if (typeof parsed.showInProgress === "boolean") setShowInProgress(parsed.showInProgress);
       }
     } catch {
       // ignore storage errors
@@ -71,12 +78,13 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (!persistReady) return;
+    const payload = { sortBy, showCompleted, showInProgress };
     try {
-      localStorage.setItem("taskapp.tasks.sort", sortBy);
+      localStorage.setItem("taskapp.tasks.filters", JSON.stringify(payload));
     } catch {
       // ignore storage errors
     }
-  }, [persistReady, sortBy]);
+  }, [persistReady, sortBy, showCompleted, showInProgress]);
 
   const sortTasks = (a: Task, b: Task) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -96,10 +104,16 @@ export default function TasksPage() {
     return a.order - b.order;
   };
 
-  const ungrouped = tasks.filter((t) => !t.groupId).sort(sortTasks);
+  const filterTask = (t: Task) => {
+    if (t.completed && !showCompleted) return false;
+    if (!t.completed && !showInProgress) return false;
+    return true;
+  };
+
+  const ungrouped = tasks.filter((t) => !t.groupId && filterTask(t)).sort(sortTasks);
   const groupMap = new Map<string, Task[]>();
   for (const t of tasks) {
-    if (t.groupId) {
+    if (t.groupId && filterTask(t)) {
       const arr = groupMap.get(t.groupId) || [];
       arr.push(t);
       groupMap.set(t.groupId, arr);
@@ -163,7 +177,10 @@ export default function TasksPage() {
                 onClick={() => setFilterOpen(!filterOpen)}
               >
                 <SlidersHorizontal size={12} />
-                Sort
+                Sort & Filter
+                {(!showInProgress || !showCompleted) && (
+                  <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
+                )}
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -179,12 +196,25 @@ export default function TasksPage() {
           {/* Sort sidebar */}
           <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-light)]">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort & Filter</h3>
               <button onClick={() => setFilterOpen(false)} className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors">
                 <X size={14} />
               </button>
             </div>
             <div className="px-5 py-4 space-y-5">
+              {/* Status */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Status</p>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showInProgress} onChange={() => setShowInProgress(!showInProgress)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">In progress</span>
+                </label>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted(!showCompleted)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">Completed</span>
+                </label>
+              </div>
+              {/* Sort */}
               <div>
                 <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Sort by</p>
                 {([["dueDate", "Due date"], ["createdAt", "Date created"], ["updatedAt", "Last updated"], ["alpha", "Alphabetical"], ["priority", "Priority"]] as const).map(([value, label]) => (
