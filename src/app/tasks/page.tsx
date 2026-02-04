@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { createTask, updateTask, deleteTask } from "@/lib/firestore";
+import { createTask, updateTask, deleteTask, updateGroup } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
 import { GroupModal } from "@/components/GroupModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getQuadrant } from "@/lib/types";
 import type { Task, TaskGroup, Quadrant } from "@/lib/types";
-import { Plus, MoreVertical, Calendar, FolderPlus, GripVertical, SlidersHorizontal, X } from "lucide-react";
+import { Plus, MoreVertical, Calendar, FolderPlus, GripVertical, SlidersHorizontal, X, ChevronDown, ChevronRight } from "lucide-react";
 import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
@@ -56,6 +56,12 @@ export default function TasksPage() {
   const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
   const [showCompleted, setShowCompleted] = useState(true);
   const [showInProgress, setShowInProgress] = useState(true);
+  const [showPriority, setShowPriority] = useState(true);
+  const [showDueDate, setShowDueDate] = useState(true);
+  const [showDragHandles, setShowDragHandles] = useState(true);
+  const [taskWidth, setTaskWidth] = useState(400);
+  const [generalOrder, setGeneralOrder] = useState(0);
+  const [groupOrderOpen, setGroupOrderOpen] = useState(false);
   const [persistReady, setPersistReady] = useState(false);
 
   useEffect(() => {
@@ -68,6 +74,13 @@ export default function TasksPage() {
         }
         if (typeof parsed.showCompleted === "boolean") setShowCompleted(parsed.showCompleted);
         if (typeof parsed.showInProgress === "boolean") setShowInProgress(parsed.showInProgress);
+        if (typeof parsed.showPriority === "boolean") setShowPriority(parsed.showPriority);
+        if (typeof parsed.showDueDate === "boolean") setShowDueDate(parsed.showDueDate);
+        if (typeof parsed.showDragHandles === "boolean") setShowDragHandles(parsed.showDragHandles);
+        if (typeof parsed.taskWidth === "number" && parsed.taskWidth >= 225 && parsed.taskWidth <= 600) {
+          setTaskWidth(parsed.taskWidth);
+        }
+        if (typeof parsed.generalOrder === "number") setGeneralOrder(parsed.generalOrder);
       }
     } catch {
       // ignore storage errors
@@ -78,13 +91,13 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (!persistReady) return;
-    const payload = { sortBy, showCompleted, showInProgress };
+    const payload = { sortBy, showCompleted, showInProgress, showPriority, showDueDate, showDragHandles, taskWidth, generalOrder };
     try {
       localStorage.setItem("taskapp.tasks.filters", JSON.stringify(payload));
     } catch {
       // ignore storage errors
     }
-  }, [persistReady, sortBy, showCompleted, showInProgress]);
+  }, [persistReady, sortBy, showCompleted, showInProgress, showPriority, showDueDate, showDragHandles, taskWidth, generalOrder]);
 
   const sortTasks = (a: Task, b: Task) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
@@ -143,13 +156,47 @@ export default function TasksPage() {
 
   const quadrantVariant = (t: Task) => getQuadrant(t).toLowerCase() as "do" | "schedule" | "delegate" | "delete";
 
-  const cards: { id: string | null; name: string; color: string; tasks: Task[] }[] = [
-    { id: null, name: "General Tasks", color: "#64748b", tasks: ungrouped },
-    ...groups.map((g) => ({ id: g.id, name: g.name, color: g.color || "#6366f1", tasks: groupMap.get(g.id) || [] })),
-  ];
+  // Sortable groups list including General (id: null)
+  const sortedGroups = [...groups].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  // Build ordered list for sidebar: General + all groups, sorted by their order
+  const allGroupsForReorder: { id: string | null; name: string; color: string; order: number }[] = [
+    { id: null, name: "General Tasks", color: "#64748b", order: generalOrder },
+    ...sortedGroups.map((g) => ({ id: g.id, name: g.name, color: g.color || "#6366f1", order: g.order ?? 0 })),
+  ].sort((a, b) => a.order - b.order);
+
+  const cards: { id: string | null; name: string; color: string; tasks: Task[]; order: number }[] = [
+    { id: null, name: "General Tasks", color: "#64748b", tasks: ungrouped, order: generalOrder },
+    ...sortedGroups.map((g) => ({ id: g.id, name: g.name, color: g.color || "#6366f1", tasks: groupMap.get(g.id) || [], order: g.order ?? 0 })),
+  ].sort((a, b) => a.order - b.order);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination || !user) return;
+
+    // Handle group reorder in sidebar
+    if (result.type === "GROUP_REORDER") {
+      const sourceIndex = result.source.index;
+      const destIndex = result.destination.index;
+      if (sourceIndex === destIndex) return;
+
+      // Create a copy of the ordered list
+      const reorderedList = [...allGroupsForReorder];
+      const [movedItem] = reorderedList.splice(sourceIndex, 1);
+      reorderedList.splice(destIndex, 0, movedItem);
+
+      // Update order values for all items
+      reorderedList.forEach((item, index) => {
+        if (item.id === null) {
+          // Update General Tasks order in state (persisted to localStorage)
+          setGeneralOrder(index);
+        } else {
+          // Update group order in Firestore
+          updateGroup(user.uid, item.id, { order: index });
+        }
+      });
+      return;
+    }
+
     const destGroupId = result.destination.droppableId === "general" ? "" : result.destination.droppableId;
     const sourceGroupId = result.source.droppableId === "general" ? "" : result.source.droppableId;
 
@@ -172,18 +219,6 @@ export default function TasksPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 w-full">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">All Tasks</h2>
-              <button
-                className="flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-2.5 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
-                onClick={() => setFilterOpen(!filterOpen)}
-              >
-                <SlidersHorizontal size={12} />
-                Sort & Filter
-                {(!showInProgress || !showCompleted) && (
-                  <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
-                )}
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
               <Button size="sm" variant="ghost" onClick={() => { setEditGroup(null); setGroupModal(true); }}>
                 <FolderPlus size={14} /> New list
               </Button>
@@ -191,12 +226,24 @@ export default function TasksPage() {
                 <Plus size={14} /> Add task
               </Button>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3 text-xs font-medium text-[var(--text-secondary)] shadow-[var(--shadow-sm)] hover:bg-[var(--bg-hover)] transition-colors"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <SlidersHorizontal size={13} />
+                Filters
+                {(!showInProgress || !showCompleted) && (
+                  <span className="ml-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] text-white font-semibold">!</span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Sort sidebar */}
+          {/* Filters sidebar */}
           <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-light)]">
-              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort & Filter</h3>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Filters</h3>
               <button onClick={() => setFilterOpen(false)} className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors">
                 <X size={14} />
               </button>
@@ -224,6 +271,91 @@ export default function TasksPage() {
                   </label>
                 ))}
               </div>
+              {/* Display */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Display</p>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showPriority} onChange={() => setShowPriority(!showPriority)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">Priority Badge</span>
+                </label>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showDueDate} onChange={() => setShowDueDate(!showDueDate)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">Due Date</span>
+                </label>
+                <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                  <input type="checkbox" checked={showDragHandles} onChange={() => setShowDragHandles(!showDragHandles)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                  <span className="text-sm text-[var(--text-primary)]">Drag Handles</span>
+                </label>
+              </div>
+
+              {/* Task Width Slider */}
+              <div>
+                <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Task Width</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-[var(--text-tertiary)]">S</span>
+                  <input
+                    type="range"
+                    min={225}
+                    max={600}
+                    step={25}
+                    value={taskWidth}
+                    onChange={(e) => setTaskWidth(Number(e.target.value))}
+                    className="flex-1 h-1.5 rounded-full appearance-none bg-[var(--border)] cursor-pointer accent-[var(--accent)]"
+                  />
+                  <span className="text-[10px] text-[var(--text-tertiary)]">L</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-tertiary)] mt-1 text-center">{taskWidth}px</p>
+              </div>
+
+              {/* Group Order */}
+              <div>
+                <button
+                  className="flex items-center gap-2 w-full text-left"
+                  onClick={() => setGroupOrderOpen(!groupOrderOpen)}
+                >
+                  {groupOrderOpen ? <ChevronDown size={12} className="text-[var(--text-tertiary)]" /> : <ChevronRight size={12} className="text-[var(--text-tertiary)]" />}
+                  <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide">Group Order</p>
+                </button>
+                {groupOrderOpen && (
+                  <div className="mt-2">
+                    <Droppable droppableId="group-reorder" type="GROUP_REORDER">
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg)] p-1 transition-colors ${snapshot.isDraggingOver ? "bg-[var(--accent-light)]" : ""}`}
+                        >
+                          {allGroupsForReorder.map((g, index) => (
+                            <Draggable key={g.id ?? "general"} draggableId={g.id ?? "general-group"} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  className={`flex items-center gap-2 rounded-[var(--radius-sm)] px-2 py-1.5 transition-all ${snapshot.isDragging ? "bg-[var(--bg-card)] shadow-[var(--shadow-md)]" : "hover:bg-[var(--bg-hover)]"}`}
+                                >
+                                  <span className="text-[10px] font-medium text-[var(--text-tertiary)] w-4 text-center">{index + 1}</span>
+                                  <div
+                                    {...provided.dragHandleProps}
+                                    className="flex items-center text-[var(--text-tertiary)] cursor-grab"
+                                  >
+                                    <GripVertical size={12} />
+                                  </div>
+                                  <span
+                                    className="h-2 w-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: g.color || "#6366f1" }}
+                                  />
+                                  <span className="text-xs text-[var(--text-primary)] truncate flex-1">{g.name}</span>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
@@ -234,7 +366,7 @@ export default function TasksPage() {
               {cards.map((c) => {
                 const droppableId = c.id ?? "general";
                 return (
-                  <div key={droppableId} className="w-full md:w-[25rem] shrink-0 flex flex-col rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]">
+                  <div key={droppableId} className="w-full shrink-0 flex flex-col rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-sm)]" style={{ width: `${taskWidth}px`, minWidth: `${taskWidth}px` }}>
                     {/* Card header */}
                     <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-light)]">
                       <div className="flex items-center gap-2">
@@ -297,7 +429,7 @@ export default function TasksPage() {
                                   >
                                     <div
                                       {...provided.dragHandleProps}
-                                      className="flex items-center text-[var(--text-tertiary)] opacity-0 group-hover/row:opacity-100 transition-opacity cursor-grab"
+                                      className={`flex items-center text-[var(--text-tertiary)] opacity-0 group-hover/row:opacity-100 transition-opacity cursor-grab ${!showDragHandles ? "hidden" : ""}`}
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       <GripVertical size={14} />
@@ -312,14 +444,14 @@ export default function TasksPage() {
                                       <span className={t.completed ? "text-sm line-through text-[var(--text-tertiary)]" : "text-sm text-[var(--text-primary)]"}>
                                         {t.title}
                                       </span>
-                                      {formatDueDateTime(t) && (
+                                      {showDueDate && formatDueDateTime(t) && (
                                         <div className="flex items-center gap-1 mt-0.5">
                                           <Calendar size={11} className="text-[var(--text-tertiary)]" />
                                           <span className="text-[11px] text-[var(--text-tertiary)]">{formatDueDateTime(t)}</span>
                                         </div>
                                       )}
                                     </div>
-                                    <Badge variant={quadrantVariant(t)} className="opacity-80 group-hover/row:opacity-100">
+                                    <Badge variant={quadrantVariant(t)} className={`opacity-80 group-hover/row:opacity-100 ${!showPriority ? "hidden" : ""}`}>
                                       {getQuadrant(t)}
                                     </Badge>
                                     <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
