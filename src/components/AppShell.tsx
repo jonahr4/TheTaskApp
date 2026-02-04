@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check, Sparkles } from "lucide-react";
+import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check, Sparkles, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { getOrCreateCalendarToken } from "@/lib/firestore";
@@ -181,6 +181,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                         </div>
                       </div>
                     )}
+                    <Link
+                      href="/stats"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      <BarChart3 size={14} />
+                      Stats
+                    </Link>
                     <button
                       onClick={() => { setUserMenuOpen(false); logOut(); }}
                       className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
