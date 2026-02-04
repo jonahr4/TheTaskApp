@@ -13,10 +13,10 @@ import type { Task, Quadrant } from "@/lib/types";
 import { Trash2, Check } from "lucide-react";
 
 const miniQuadrants: { key: Quadrant; label: string; urgent: boolean; important: boolean; bg: string; bgSelected: string; border: string; text: string; ring: string }[] = [
-  { key: "DO",       label: "Do First",  urgent: true,  important: true,  bg: "bg-red-50",   bgSelected: "bg-red-100",   border: "border-red-200",   text: "text-red-700",   ring: "ring-red-400" },
-  { key: "SCHEDULE", label: "Schedule",   urgent: false, important: true,  bg: "bg-blue-50",  bgSelected: "bg-blue-100",  border: "border-blue-200",  text: "text-blue-700",  ring: "ring-blue-400" },
-  { key: "DELEGATE", label: "Delegate",   urgent: true,  important: false, bg: "bg-amber-50", bgSelected: "bg-amber-100", border: "border-amber-200", text: "text-amber-700", ring: "ring-amber-400" },
-  { key: "DELETE",   label: "Eliminate",  urgent: false, important: false, bg: "bg-gray-50",  bgSelected: "bg-gray-100",  border: "border-gray-200",  text: "text-gray-600",  ring: "ring-gray-400" },
+  { key: "DO", label: "Do First", urgent: true, important: true, bg: "bg-red-50", bgSelected: "bg-red-100", border: "border-red-200", text: "text-red-700", ring: "ring-red-400" },
+  { key: "SCHEDULE", label: "Schedule", urgent: false, important: true, bg: "bg-blue-50", bgSelected: "bg-blue-100", border: "border-blue-200", text: "text-blue-700", ring: "ring-blue-400" },
+  { key: "DELEGATE", label: "Delegate", urgent: true, important: false, bg: "bg-amber-50", bgSelected: "bg-amber-100", border: "border-amber-200", text: "text-amber-700", ring: "ring-amber-400" },
+  { key: "DELETE", label: "Eliminate", urgent: false, important: false, bg: "bg-gray-50", bgSelected: "bg-gray-100", border: "border-gray-200", text: "text-gray-600", ring: "ring-gray-400" },
 ];
 
 type Props = {
@@ -39,6 +39,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
   const [notes, setNotes] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [important, setImportant] = useState(false);
+  const [noPriority, setNoPriority] = useState(false);
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [groupId, setGroupId] = useState("");
@@ -50,12 +51,14 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
     if (task) {
       setTitle(task.title);
       setNotes(task.notes || "");
-      setUrgent(task.urgent);
-      setImportant(task.important);
+      setUrgent(task.urgent ?? false);
+      setImportant(task.important ?? false);
       setDueDate(task.dueDate || "");
       setDueTime(task.dueTime || "");
       setGroupId(task.groupId || "");
       setCompleted(task.completed);
+      // Check if task has no priority (null values)
+      setNoPriority(task.urgent === null || task.important === null);
       const days = task.autoUrgentDays;
       if (days == null) { setAutoUrgentDays("off"); setCustomDays(""); }
       else if (days === 1) { setAutoUrgentDays("1"); setCustomDays(""); }
@@ -67,6 +70,7 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setNotes("");
       setUrgent(defaultUrgent ?? true);
       setImportant(defaultImportant ?? true);
+      setNoPriority(false);
       setDueDate(defaultDueDate || "");
       setDueTime(defaultDueTime || "");
       setGroupId(defaultGroupId || "");
@@ -81,8 +85,8 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
     const data = {
       title: title.trim(),
       notes: notes.trim() || "",
-      urgent,
-      important,
+      urgent: noPriority ? null : urgent,
+      important: noPriority ? null : important,
       dueDate: dueDate || null,
       dueTime: dueTime || null,
       groupId: groupId || null,
@@ -124,30 +128,47 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
         <div>
           <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Priority</label>
           <select
-            value={miniQuadrants.find((q) => urgent === q.urgent && important === q.important)?.key ?? "DO"}
+            value={noPriority ? "none" : (miniQuadrants.find((q) => urgent === q.urgent && important === q.important)?.key ?? "DO")}
             onChange={(e) => {
-              const next = miniQuadrants.find((q) => q.key === e.target.value);
-              if (next) { setUrgent(next.urgent); setImportant(next.important); }
+              if (e.target.value === "none") {
+                setNoPriority(true);
+                setUrgent(false);
+                setImportant(false);
+              } else {
+                const next = miniQuadrants.find((q) => q.key === e.target.value);
+                if (next) { setUrgent(next.urgent); setImportant(next.important); setNoPriority(false); }
+              }
             }}
             className="flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-2 text-sm text-[var(--text-primary)] sm:hidden"
           >
             {miniQuadrants.map((q) => (
               <option key={q.key} value={q.key}>{q.label}</option>
             ))}
+            <option value="none">No Priority</option>
           </select>
           <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 gap-2">
             {miniQuadrants.map((q) => {
-              const selected = urgent === q.urgent && important === q.important;
+              const selected = !noPriority && urgent === q.urgent && important === q.important;
               return (
                 <button
                   key={q.key}
                   type="button"
-                  onClick={() => { setUrgent(q.urgent); setImportant(q.important); }}
-                  className={`relative flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2.5 text-left transition-all ${
-                    selected
-                      ? `${q.bgSelected} ${q.border} ring-2 ${q.ring} ring-offset-1`
-                      : `${q.bg} ${q.border} hover:${q.bgSelected} opacity-70 hover:opacity-100`
-                  }`}
+                  onClick={() => {
+                    if (selected) {
+                      // Clicking selected priority deselects it
+                      setNoPriority(true);
+                      setUrgent(false);
+                      setImportant(false);
+                    } else {
+                      setUrgent(q.urgent);
+                      setImportant(q.important);
+                      setNoPriority(false);
+                    }
+                  }}
+                  className={`relative flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2.5 text-left transition-all ${selected
+                    ? `${q.bgSelected} ${q.border} ring-2 ${q.ring} ring-offset-1`
+                    : `${q.bg} ${q.border} hover:${q.bgSelected} opacity-70 hover:opacity-100`
+                    }`}
                 >
                   {selected && (
                     <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${q.bgSelected} ${q.text}`}>
@@ -159,6 +180,9 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
               );
             })}
           </div>
+          {noPriority && (
+            <p className="text-[10px] text-[var(--text-tertiary)] mt-1">No priority selected. Click a priority to set one.</p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

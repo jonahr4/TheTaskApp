@@ -139,7 +139,8 @@ export default function CalendarPage() {
         const gId = t.groupId || "__general__";
         if (!selectedGroups.has(gId)) return false;
       }
-      if (!selectedQuadrants.has(getQuadrant(t))) return false;
+      const quadrant = getQuadrant(t);
+      if (quadrant && !selectedQuadrants.has(quadrant)) return false;
       return true;
     })
     .map((t) => {

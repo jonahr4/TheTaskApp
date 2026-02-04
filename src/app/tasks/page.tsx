@@ -106,8 +106,15 @@ export default function TasksPage() {
     if (sortBy === "updatedAt") return (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0);
     if (sortBy === "priority") {
       const pOrder: Record<Quadrant, number> = { DO: 0, SCHEDULE: 1, DELEGATE: 2, DELETE: 3 };
-      const diff = pOrder[getQuadrant(a)] - pOrder[getQuadrant(b)];
-      if (diff !== 0) return diff;
+      const aQ = getQuadrant(a);
+      const bQ = getQuadrant(b);
+      // Tasks without priority go to the end
+      if (aQ === null && bQ !== null) return 1;
+      if (aQ !== null && bQ === null) return -1;
+      if (aQ !== null && bQ !== null) {
+        const diff = pOrder[aQ] - pOrder[bQ];
+        if (diff !== 0) return diff;
+      }
     }
     const aDt = getTaskDateTime(a);
     const bDt = getTaskDateTime(b);
@@ -154,7 +161,10 @@ export default function TasksPage() {
     } as any);
   };
 
-  const quadrantVariant = (t: Task) => getQuadrant(t).toLowerCase() as "do" | "schedule" | "delegate" | "delete";
+  const quadrantVariant = (t: Task) => {
+    const q = getQuadrant(t);
+    return q ? q.toLowerCase() as "do" | "schedule" | "delegate" | "delete" : null;
+  };
 
   // Sortable groups list including General (id: null)
   const sortedGroups = [...groups].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -451,9 +461,11 @@ export default function TasksPage() {
                                         </div>
                                       )}
                                     </div>
-                                    <Badge variant={quadrantVariant(t)} className={`opacity-80 group-hover/row:opacity-100 ${!showPriority ? "hidden" : ""}`}>
-                                      {getQuadrant(t)}
-                                    </Badge>
+                                    {showPriority && getQuadrant(t) && (
+                                      <Badge variant={quadrantVariant(t)!} className="opacity-80 group-hover/row:opacity-100">
+                                        {getQuadrant(t)}
+                                      </Badge>
+                                    )}
                                     <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
                                       <TaskRowMenu
                                         completed={t.completed}

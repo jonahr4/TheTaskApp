@@ -4,8 +4,8 @@ export type Task = {
   id: string;
   title: string;
   notes?: string;
-  urgent: boolean;
-  important: boolean;
+  urgent: boolean | null;
+  important: boolean | null;
   reminder?: boolean;
   dueDate: string | null;
   dueTime: string | null;
@@ -27,7 +27,8 @@ export type TaskGroup = {
 
 export type Quadrant = "DO" | "SCHEDULE" | "DELEGATE" | "DELETE";
 
-export function getQuadrant(t: Task): Quadrant {
+export function getQuadrant(t: Task): Quadrant | null {
+  if (t.urgent === null || t.important === null) return null;
   if (t.urgent && t.important) return "DO";
   if (!t.urgent && t.important) return "SCHEDULE";
   if (t.urgent && !t.important) return "DELEGATE";

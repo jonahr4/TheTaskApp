@@ -115,7 +115,8 @@ export function useStats(tasks: Task[], groups: TaskGroup[]) {
     const quadrantStats = useMemo((): QuadrantStats[] => {
         const counts: Record<string, number> = { DO: 0, SCHEDULE: 0, DELEGATE: 0, DELETE: 0 };
         tasks.filter((t) => !t.completed).forEach((t) => {
-            counts[getQuadrant(t)]++;
+            const q = getQuadrant(t);
+            if (q) counts[q]++;
         });
         return [
             { name: "Do First", value: counts.DO, color: QUADRANT_COLORS.DO },

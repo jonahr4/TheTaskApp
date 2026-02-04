@@ -8,7 +8,7 @@ import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
 import { getQuadrant, type Task, type Quadrant } from "@/lib/types";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
-import { Plus, SlidersHorizontal, X } from "lucide-react";
+import { Plus, SlidersHorizontal, X, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
@@ -21,17 +21,17 @@ const quadrants: {
   dot: string;
   border: string;
 }[] = [
-  { key: "DO",       label: "Do First",  sublabel: "Important & Urgent",     accent: "text-red-600",    bg: "bg-red-50",    dot: "bg-red-500",    border: "border-red-200" },
-  { key: "SCHEDULE", label: "Schedule",   sublabel: "Important & Not Urgent", accent: "text-blue-600",   bg: "bg-blue-50",   dot: "bg-blue-500",   border: "border-blue-200" },
-  { key: "DELEGATE", label: "Delegate",   sublabel: "Urgent & Not Important", accent: "text-amber-600",  bg: "bg-amber-50",  dot: "bg-amber-500",  border: "border-amber-200" },
-  { key: "DELETE",   label: "Eliminate",  sublabel: "Not Important or Urgent",accent: "text-gray-500",   bg: "bg-gray-50",   dot: "bg-gray-400",   border: "border-gray-200" },
-];
+    { key: "DO", label: "Important & Urgent", sublabel: "Do First", accent: "text-red-600", bg: "bg-red-50", dot: "bg-red-500", border: "border-red-200" },
+    { key: "SCHEDULE", label: "Important & Not Urgent", sublabel: "Schedule", accent: "text-blue-600", bg: "bg-blue-50", dot: "bg-blue-500", border: "border-blue-200" },
+    { key: "DELEGATE", label: "Urgent & Not Important", sublabel: "Delegate", accent: "text-amber-600", bg: "bg-amber-50", dot: "bg-amber-500", border: "border-amber-200" },
+    { key: "DELETE", label: "Not Important or Urgent", sublabel: "Eliminate", accent: "text-gray-500", bg: "bg-gray-50", dot: "bg-gray-400", border: "border-gray-200" },
+  ];
 
 const quadrantFlags: Record<Quadrant, { urgent: boolean; important: boolean }> = {
-  DO:       { urgent: true,  important: true },
+  DO: { urgent: true, important: true },
   SCHEDULE: { urgent: false, important: true },
-  DELEGATE: { urgent: true,  important: false },
-  DELETE:   { urgent: false, important: false },
+  DELEGATE: { urgent: true, important: false },
+  DELETE: { urgent: false, important: false },
 };
 
 export default function MatrixPage() {
@@ -47,6 +47,7 @@ export default function MatrixPage() {
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
   const [sortBy, setSortBy] = useState<"dueDate" | "createdAt" | "updatedAt" | "alpha" | "priority">("dueDate");
   const [persistReady, setPersistReady] = useState(false);
+  const [uncategorizedOpen, setUncategorizedOpen] = useState(false);
 
   const allGroupIds = ["__general__", ...groups.map((g) => g.id)];
 
@@ -141,8 +142,14 @@ export default function MatrixPage() {
         if (sortBy === "updatedAt") return (b.updatedAt?.toMillis() ?? 0) - (a.updatedAt?.toMillis() ?? 0);
         if (sortBy === "priority") {
           const pOrder: Record<Quadrant, number> = { DO: 0, SCHEDULE: 1, DELEGATE: 2, DELETE: 3 };
-          const diff = pOrder[getQuadrant(a)] - pOrder[getQuadrant(b)];
-          if (diff !== 0) return diff;
+          const aQ = getQuadrant(a);
+          const bQ = getQuadrant(b);
+          if (aQ === null && bQ !== null) return 1;
+          if (aQ !== null && bQ === null) return -1;
+          if (aQ !== null && bQ !== null) {
+            const diff = pOrder[aQ] - pOrder[bQ];
+            if (diff !== 0) return diff;
+          }
         }
         const aDt = getTaskDateTime(a);
         const bDt = getTaskDateTime(b);
@@ -175,16 +182,41 @@ export default function MatrixPage() {
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination || !user) return;
-    const destQuadrant = result.destination.droppableId as Quadrant;
-    const sourceQuadrant = result.source.droppableId as Quadrant;
-    if (destQuadrant === sourceQuadrant) return;
+
+    const destId = result.destination.droppableId;
+    const sourceId = result.source.droppableId;
+
+    if (destId === sourceId) return;
 
     const task = tasks.find((t) => t.id === result.draggableId);
     if (!task) return;
 
-    const flags = quadrantFlags[destQuadrant];
+    // Dropping into uncategorized removes priority
+    if (destId === "__uncategorized__") {
+      updateTask(user.uid, task.id, { urgent: null, important: null });
+      return;
+    }
+
+    const flags = quadrantFlags[destId as Quadrant];
     updateTask(user.uid, task.id, { urgent: flags.urgent, important: flags.important });
   };
+
+  // Uncategorized tasks (no priority set)
+  const uncategorizedTasks = tasks
+    .filter((t) => {
+      if (getQuadrant(t) !== null) return false; // Has priority
+      if (t.completed && !showCompleted) return false;
+      if (!t.completed && !showInProgress) return false;
+      if (!allGroupsSelected) {
+        const gId = t.groupId || "__general__";
+        if (!selectedGroups.has(gId)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      return a.order - b.order;
+    });
 
   return (
     <AppShell>
@@ -283,98 +315,199 @@ export default function MatrixPage() {
           {/* Backdrop */}
           {filterOpen && <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setFilterOpen(false)} />}
 
-          <div className="grid h-[calc(100%-3rem)] grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
-            {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
-              const items = byQuadrant(key);
-              return (
-                <div key={key} className={`flex flex-col rounded-[var(--radius-lg)] ${bg} ${border} border overflow-hidden`}>
-                  {/* Quadrant header */}
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`h-2.5 w-2.5 rounded-full ${dot}`} />
-                      <div>
-                        <h3 className={`text-sm font-semibold ${accent}`}>{label}</h3>
-                        <p className="text-[11px] text-[var(--text-tertiary)]">{sublabel}</p>
+          <div className="flex h-[calc(100%-3rem)] gap-4">
+            {/* Matrix grid */}
+            <div className="flex-1 grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
+              {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
+                const items = byQuadrant(key);
+                return (
+                  <div key={key} className={`flex flex-col rounded-[var(--radius-lg)] ${bg} ${border} border overflow-hidden`}>
+                    {/* Quadrant header */}
+                    <div className="flex items-center justify-between px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+                        <div>
+                          <h3 className={`text-sm font-semibold ${accent}`}>{label}</h3>
+                          <p className="text-[11px] text-[var(--text-tertiary)]">{sublabel}</p>
+                        </div>
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-[var(--radius-full)] bg-white/60 px-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
+                          {items.length}
+                        </span>
                       </div>
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-[var(--radius-full)] bg-white/60 px-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
-                        {items.length}
+                      <button
+                        className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-white/60 hover:text-[var(--text-secondary)] transition-colors"
+                        onClick={() => openNewInQuadrant(key)}
+                      >
+                        <Plus size={15} />
+                      </button>
+                    </div>
+
+                    {/* Tasks - droppable */}
+                    <Droppable droppableId={key}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={`flex-1 overflow-auto px-3 pb-3 space-y-1 transition-colors ${snapshot.isDraggingOver ? "bg-white/30" : ""}`}
+                        >
+                          {items.map((t, index) => (
+                            <Draggable key={t.id} draggableId={t.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-white/70 px-3 py-1.5 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
+                                  onClick={() => openEdit(t)}
+                                >
+                                  <button
+                                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                                    onClick={(e) => { e.stopPropagation(); user && updateTask(user.uid, t.id, { completed: !t.completed }); }}
+                                  >
+                                    {t.completed && <div className="h-2 w-2 rounded-[1px] bg-[var(--accent)]" />}
+                                  </button>
+                                  <span className={`text-xs transition-colors truncate ${t.completed ? "line-through text-[var(--text-tertiary)]" : "text-[var(--text-primary)] group-hover:text-[var(--accent)]"}`}>
+                                    {t.title}
+                                  </span>
+                                  <span className="ml-auto shrink-0 flex items-center gap-2">
+                                    {t.dueDate && (
+                                      <span className="text-[11px] text-[var(--text-tertiary)]">
+                                        {formatDateTime(t)}
+                                      </span>
+                                    )}
+                                    <span className="text-[10px] text-[var(--text-tertiary)] opacity-60">
+                                      {t.groupId ? (groups.find(g => g.id === t.groupId)?.name ?? "General Tasks") : "General Tasks"}
+                                    </span>
+                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <TaskRowMenu
+                                        completed={t.completed}
+                                        onEdit={() => openEdit(t)}
+                                        onDuplicate={() => duplicateTask(t)}
+                                        onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
+                                        onDelete={() => user && deleteTask(user.uid, t.id)}
+                                      />
+                                    </div>
+                                  </span>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                          {items.length === 0 && !snapshot.isDraggingOver && (
+                            <div className="flex items-center justify-center h-full min-h-[60px]">
+                              <button
+                                className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
+                                onClick={() => openNewInQuadrant(key)}
+                              >
+                                + Add a task
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Toggle arrow - shown when panel is closed */}
+            {!uncategorizedOpen && (
+              <button
+                onClick={() => setUncategorizedOpen(true)}
+                className="absolute right-6 top-1/2 -translate-y-1/2 z-10 flex h-8 w-5 items-center justify-center rounded-l-md bg-gray-100 border border-r-0 border-gray-200 text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all"
+              >
+                <ChevronLeft size={14} />
+                {uncategorizedTasks.length > 0 && (
+                  <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gray-500 px-1 text-[9px] text-white font-semibold">
+                    {uncategorizedTasks.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Uncategorized panel - on the right */}
+            <div className={`relative flex-shrink-0 transition-all duration-300 ${uncategorizedOpen ? "w-[20%] min-w-[200px]" : "w-0"}`}>
+              {uncategorizedOpen && (
+                <div className="h-full flex flex-col rounded-[var(--radius-lg)] bg-gray-50 border border-gray-200 overflow-hidden">
+                  {/* Header with close arrow */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2.5 w-2.5 rounded-full bg-gray-400" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-700">Uncategorized</h3>
+                        <p className="text-[10px] text-gray-500">Drag to categorize</p>
+                      </div>
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-[var(--radius-full)] bg-white/60 px-1.5 text-[11px] font-medium text-gray-600">
+                        {uncategorizedTasks.length}
                       </span>
                     </div>
                     <button
-                      className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-white/60 hover:text-[var(--text-secondary)] transition-colors"
-                      onClick={() => openNewInQuadrant(key)}
+                      onClick={() => setUncategorizedOpen(false)}
+                      className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors"
                     >
-                      <Plus size={15} />
+                      <ChevronRight size={14} />
                     </button>
                   </div>
 
                   {/* Tasks - droppable */}
-                  <Droppable droppableId={key}>
+                  <Droppable droppableId="__uncategorized__">
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`flex-1 overflow-auto px-3 pb-3 space-y-1 transition-colors ${snapshot.isDraggingOver ? "bg-white/30" : ""}`}
+                        className={`flex-1 overflow-auto px-3 pb-3 space-y-1 transition-colors ${snapshot.isDraggingOver ? "bg-gray-100/50" : ""}`}
                       >
-                        {items.map((t, index) => (
+                        {uncategorizedTasks.map((t, index) => (
                           <Draggable key={t.id} draggableId={t.id} index={index}>
                             {(provided, snapshot) => (
                               <div
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-white/70 px-3 py-1.5 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
+                                className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-white/70 px-3 py-1.5 cursor-pointer hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
                                 onClick={() => openEdit(t)}
                               >
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="flex items-center text-gray-400 cursor-grab"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <GripVertical size={12} />
+                                </div>
                                 <button
-                                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-colors"
+                                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] border-2 border-gray-300 hover:border-gray-500 transition-colors"
                                   onClick={(e) => { e.stopPropagation(); user && updateTask(user.uid, t.id, { completed: !t.completed }); }}
                                 >
-                                  {t.completed && <div className="h-2 w-2 rounded-[1px] bg-[var(--accent)]" />}
+                                  {t.completed && <div className="h-2 w-2 rounded-[1px] bg-gray-500" />}
                                 </button>
-                                <span className={`text-xs transition-colors truncate ${t.completed ? "line-through text-[var(--text-tertiary)]" : "text-[var(--text-primary)] group-hover:text-[var(--accent)]"}`}>
+                                <span className={`text-xs transition-colors truncate flex-1 ${t.completed ? "line-through text-gray-400" : "text-gray-800 group-hover:text-gray-600"}`}>
                                   {t.title}
                                 </span>
-                                <span className="ml-auto shrink-0 flex items-center gap-2">
-                                  {t.dueDate && (
-                                    <span className="text-[11px] text-[var(--text-tertiary)]">
-                                      {formatDateTime(t)}
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] text-[var(--text-tertiary)] opacity-60">
-                                    {t.groupId ? (groups.find(g => g.id === t.groupId)?.name ?? "General Tasks") : "General Tasks"}
-                                  </span>
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <TaskRowMenu
-                                      completed={t.completed}
-                                      onEdit={() => openEdit(t)}
-                                      onDuplicate={() => duplicateTask(t)}
-                                      onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
-                                      onDelete={() => user && deleteTask(user.uid, t.id)}
-                                    />
-                                  </div>
-                                </span>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <TaskRowMenu
+                                    completed={t.completed}
+                                    onEdit={() => openEdit(t)}
+                                    onDuplicate={() => duplicateTask(t)}
+                                    onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
+                                    onDelete={() => user && deleteTask(user.uid, t.id)}
+                                  />
+                                </div>
                               </div>
                             )}
                           </Draggable>
                         ))}
                         {provided.placeholder}
-                        {items.length === 0 && !snapshot.isDraggingOver && (
+                        {uncategorizedTasks.length === 0 && !snapshot.isDraggingOver && (
                           <div className="flex items-center justify-center h-full min-h-[60px]">
-                            <button
-                              className="text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors"
-                              onClick={() => openNewInQuadrant(key)}
-                            >
-                              + Add a task
-                            </button>
+                            <p className="text-xs text-gray-400">No uncategorized tasks</p>
                           </div>
                         )}
                       </div>
                     )}
                   </Droppable>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
         </div>
       </DragDropContext>
