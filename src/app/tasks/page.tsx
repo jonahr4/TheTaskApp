@@ -251,14 +251,14 @@ export default function TasksPage() {
           </div>
 
           {/* Filters sidebar */}
-          <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
+          <div className={`fixed top-0 right-0 z-40 h-full w-72 border-l border-[var(--border-light)] bg-[var(--bg-card)] shadow-[var(--shadow-lg)] transition-transform duration-200 flex flex-col ${filterOpen ? "translate-x-0" : "translate-x-full"}`}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border-light)]">
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">Filters</h3>
               <button onClick={() => setFilterOpen(false)} className="flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors">
                 <X size={14} />
               </button>
             </div>
-            <div className="px-5 py-4 space-y-5">
+            <div className="px-5 py-4 space-y-5 overflow-y-auto flex-1">
               {/* Status */}
               <div>
                 <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-2">Status</p>

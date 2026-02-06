@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Check, Sparkles, BarChart3 } from "lucide-react";
+import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Sparkles, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { getOrCreateCalendarToken } from "@/lib/firestore";
 import { useTasks } from "@/hooks/useTasks";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
+import { CalendarFeedModal } from "@/components/CalendarFeedModal";
 
 const navItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -26,22 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const [calUrl, setCalUrl] = useState<string | null>(null);
-  const [calCopied, setCalCopied] = useState(false);
-
-  const handleCalendarLink = async () => {
-    if (!user) return;
-    const token = await getOrCreateCalendarToken(user.uid);
-    const url = `${window.location.origin}/api/ical/${token}`;
-    setCalUrl(url);
-  };
-
-  const copyCalUrl = () => {
-    if (!calUrl) return;
-    navigator.clipboard.writeText(calUrl);
-    setCalCopied(true);
-    setTimeout(() => setCalCopied(false), 2000);
-  };
+  const [calModalOpen, setCalModalOpen] = useState(false);
   const currentNav = navItems.find((n) => n.href === pathname) || navItems[0];
 
   useEffect(() => {
@@ -156,31 +141,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </div>
                   <div className="p-1">
                     <button
-                      onClick={handleCalendarLink}
+                      onClick={() => { setUserMenuOpen(false); setCalModalOpen(true); }}
                       className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
                     >
                       <Link2 size={14} />
                       Calendar feed
                     </button>
-                    {calUrl && (
-                      <div className="mx-2 my-1 rounded-[var(--radius-sm)] border border-[var(--border-light)] bg-[var(--bg)] p-2">
-                        <p className="text-[10px] text-[var(--text-tertiary)] mb-1">Subscribe in Apple/Google Calendar:</p>
-                        <div className="flex items-center gap-1">
-                          <input
-                            readOnly
-                            value={calUrl}
-                            className="flex-1 min-w-0 rounded bg-transparent text-[11px] text-[var(--text-primary)] outline-none truncate"
-                            onClick={(e) => (e.target as HTMLInputElement).select()}
-                          />
-                          <button
-                            onClick={copyCalUrl}
-                            className="shrink-0 flex h-6 w-6 items-center justify-center rounded-[var(--radius-sm)] text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] transition-colors"
-                          >
-                            {calCopied ? <Check size={12} className="text-green-500" /> : <Link2 size={12} />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                     <Link
                       href="/stats"
                       onClick={() => setUserMenuOpen(false)}
@@ -206,6 +172,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Content */}
       <main className="flex-1 overflow-auto px-4 sm:px-6 md:px-10">{children}</main>
+
+      <CalendarFeedModal open={calModalOpen} onOpenChange={setCalModalOpen} />
     </div>
   );
 }

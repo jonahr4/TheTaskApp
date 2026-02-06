@@ -7,6 +7,9 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
+  const { searchParams } = new URL(request.url);
+  const groupsParam = searchParams.get("groups"); // comma-separated group IDs
+  const groupIds = groupsParam ? groupsParam.split(",").filter(Boolean) : null;
 
   // Look up user by calendarToken
   const usersSnap = await adminDb
@@ -55,6 +58,12 @@ export async function GET(
   tasksSnap.forEach((doc) => {
     const t = doc.data();
     if (!t.dueDate) return; // skip tasks without due date
+
+    // Filter by group if groupIds param provided
+    if (groupIds !== null) {
+      const taskGroupId = t.groupId || "";
+      if (!groupIds.includes(taskGroupId)) return;
+    }
 
     const quadrant = getQuadrant(t.urgent, t.important);
     const groupName = t.groupId ? (groupNames.get(t.groupId) ?? "General Tasks") : "General Tasks";

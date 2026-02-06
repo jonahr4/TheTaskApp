@@ -5,18 +5,25 @@ import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 
 type DialogCtx = { open: boolean; onClose: () => void };
-const Ctx = createContext<DialogCtx>({ open: false, onClose: () => {} });
+const Ctx = createContext<DialogCtx>({ open: false, onClose: () => { } });
 
 export function Dialog({
   open,
   onOpenChange,
   children,
+  size = "md",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   children: ReactNode;
+  size?: "md" | "lg" | "xl";
 }) {
   if (!open) return null;
+  const sizeClasses = {
+    md: "sm:max-w-md",
+    lg: "sm:max-w-lg",
+    xl: "sm:max-w-2xl",
+  };
   return (
     <Ctx.Provider value={{ open, onClose: () => onOpenChange(false) }}>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-10">
@@ -24,7 +31,7 @@ export function Dialog({
           className="fixed inset-0 bg-black/40 backdrop-blur-[2px]"
           onClick={() => onOpenChange(false)}
         />
-        <div className="relative z-50 h-full w-full max-w-none rounded-none border border-[var(--border-light)] bg-[var(--bg-card)] p-0 shadow-[var(--shadow-lg)] sm:h-auto sm:max-w-md sm:rounded-[var(--radius-lg)]">
+        <div className={cn("relative z-50 h-full w-full max-w-none rounded-none border border-[var(--border-light)] bg-[var(--bg-card)] p-0 shadow-[var(--shadow-lg)] sm:h-auto sm:rounded-[var(--radius-lg)]", sizeClasses[size])}>
           {children}
         </div>
       </div>
