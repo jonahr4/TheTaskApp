@@ -21,12 +21,14 @@ import {
 import { Flame, Trophy, TrendingUp, CheckCircle2, Clock, Calendar, Target, Zap } from "lucide-react";
 
 type StatsFilter = "active" | "completed" | "all";
+type ChartMode = "created" | "active";
 
 export default function StatsPage() {
     const { user } = useAuth();
     const { tasks: allTasks, loading: tasksLoading } = useTasks(user?.uid);
     const { groups, loading: groupsLoading } = useTaskGroups(user?.uid);
     const [filter, setFilter] = useState<StatsFilter>("all");
+    const [chartMode, setChartMode] = useState<ChartMode>("active");
 
     // Filter tasks based on selected filter
     const tasks = useMemo(() => {
@@ -43,6 +45,7 @@ export default function StatsPage() {
 
     const {
         stackedData,
+        cumulativeActiveData,
         quadrantStats,
         heatmapData,
         maxHeatmapCount,
@@ -51,6 +54,8 @@ export default function StatsPage() {
         recentCompletions,
         groupColorMap,
     } = useStats(tasks, groups);
+
+    const chartData = chartMode === "active" ? cumulativeActiveData : stackedData;
 
     const loading = tasksLoading || groupsLoading;
 
@@ -212,11 +217,29 @@ export default function StatsPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                             {/* Tasks Over Time - Takes 2 columns */}
                             <div className="lg:col-span-2 rounded-[var(--radius-lg)] border border-[var(--border-light)] bg-[var(--bg-card)] p-6 shadow-[var(--shadow-sm)]">
-                                <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">Tasks Created Over Time</h3>
-                                <p className="text-xs text-[var(--text-tertiary)] mb-4">Last 30 days, by list</p>
+                                <div className="flex items-center justify-between mb-1">
+                                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Tasks Over Time</h3>
+                                    <div className="flex items-center rounded-[var(--radius-full)] bg-[var(--bg)] p-0.5 border border-[var(--border-light)]">
+                                        {(["created", "active"] as ChartMode[]).map((m) => (
+                                            <button
+                                                key={m}
+                                                onClick={() => setChartMode(m)}
+                                                className={`px-3 py-1 text-[11px] font-medium rounded-[var(--radius-full)] transition-all duration-150 ${chartMode === m
+                                                    ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-[var(--shadow-sm)]"
+                                                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                                    }`}
+                                            >
+                                                {m === "created" ? "Created" : "Active"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <p className="text-xs text-[var(--text-tertiary)] mb-4">
+                                    {chartMode === "created" ? "New tasks per day, by list" : "Cumulative active tasks per day, by list"}
+                                </p>
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={stackedData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" />
                                             <XAxis
                                                 dataKey="displayDate"

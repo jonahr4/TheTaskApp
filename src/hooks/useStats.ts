@@ -97,7 +97,7 @@ export function useStats(tasks: Task[], groups: TaskGroup[]) {
         return days;
     }, [tasks]);
 
-    // For stacked area chart: transform by group
+    // For stacked area chart: transform by group (created per day)
     const stackedData = useMemo(() => {
         return dailyStats.map((d) => {
             const row: Record<string, number | string> = {
@@ -110,6 +110,47 @@ export function useStats(tasks: Task[], groups: TaskGroup[]) {
             return row;
         });
     }, [dailyStats, groupColorMap]);
+
+    // Cumulative active tasks per day (for "Currently Active" chart mode)
+    const cumulativeActiveData = useMemo(() => {
+        const now = new Date();
+        const days: string[] = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(now);
+            d.setDate(d.getDate() - i);
+            days.push(d.toISOString().split("T")[0]);
+        }
+
+        return days.map((dateStr) => {
+            const row: Record<string, number | string> = {
+                date: dateStr,
+                displayDate: new Date(dateStr + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+            };
+
+            // For each group, count tasks that were created on or before this date
+            // AND were either not completed, or completed after this date
+            Object.keys(groupColorMap).forEach((gid) => {
+                row[gid] = 0;
+            });
+
+            tasks.forEach((t) => {
+                if (!t.createdAt) return;
+                const createdDate = t.createdAt.toDate().toISOString().split("T")[0];
+                if (createdDate > dateStr) return; // not yet created
+
+                // If the task is completed, check if it was completed after this date
+                if (t.completed && t.updatedAt) {
+                    const completedDate = t.updatedAt.toDate().toISOString().split("T")[0];
+                    if (completedDate <= dateStr) return; // already completed by this date
+                }
+
+                const gid = t.groupId || "";
+                row[gid] = (row[gid] as number) + 1;
+            });
+
+            return row;
+        });
+    }, [tasks, groupColorMap]);
 
     // Quadrant distribution
     const quadrantStats = useMemo((): QuadrantStats[] => {
@@ -304,6 +345,7 @@ export function useStats(tasks: Task[], groups: TaskGroup[]) {
     return {
         dailyStats,
         stackedData,
+        cumulativeActiveData,
         quadrantStats,
         heatmapData,
         maxHeatmapCount,

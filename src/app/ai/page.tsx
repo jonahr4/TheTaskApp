@@ -164,7 +164,7 @@ export default function AiPage() {
             <div className="space-y-4">
               {result.tasks.map((t, idx) => (
                 <div
-                  key={`${t.title}-${idx}`}
+                  key={idx}
                   className="rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg)]/70 p-3 space-y-3"
                 >
                   <div className="flex items-center justify-between">
