@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           max_completion_tokens: maxTokens,
           response_format: { type: "json_object" },
-          reasoning_effort: "low",
+          reasoning_effort: "medium",
           messages: [
             { role: "system", content: system },
             { role: "user", content: text.trim() },
@@ -110,11 +110,11 @@ export async function POST(req: NextRequest) {
       });
     };
 
-    let response = await callAzure(600);
+    let response = await callAzure(5000);
     if (!response.ok) {
       const errorText = await response.text();
       if (errorText.includes("reasoning_effort")) {
-        response = await callAzure(600, { reasoning_effort: undefined });
+        response = await callAzure(5000, { reasoning_effort: undefined });
       } else {
         return NextResponse.json(
           { error: "Azure OpenAI request failed.", status: response.status, detail: errorText },
