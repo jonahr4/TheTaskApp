@@ -21,10 +21,10 @@ const quadrants: {
   dot: string;
   border: string;
 }[] = [
-    { key: "DO", label: "Important & Urgent", sublabel: "Do First", accent: "text-red-600", bg: "bg-red-50", dot: "bg-red-500", border: "border-red-200" },
-    { key: "SCHEDULE", label: "Important & Not Urgent", sublabel: "Schedule", accent: "text-blue-600", bg: "bg-blue-50", dot: "bg-blue-500", border: "border-blue-200" },
-    { key: "DELEGATE", label: "Urgent & Not Important", sublabel: "Delegate", accent: "text-amber-600", bg: "bg-amber-50", dot: "bg-amber-500", border: "border-amber-200" },
-    { key: "DELETE", label: "Not Important or Urgent", sublabel: "Eliminate", accent: "text-gray-500", bg: "bg-gray-50", dot: "bg-gray-400", border: "border-gray-200" },
+    { key: "DO", label: "Important & Urgent", sublabel: "Do First", accent: "text-red-700", bg: "bg-red-100", dot: "bg-red-500", border: "border-red-300" },
+    { key: "SCHEDULE", label: "Important & Not Urgent", sublabel: "Schedule", accent: "text-blue-700", bg: "bg-blue-100", dot: "bg-blue-500", border: "border-blue-300" },
+    { key: "DELEGATE", label: "Urgent & Not Important", sublabel: "Delegate", accent: "text-amber-700", bg: "bg-amber-100", dot: "bg-amber-500", border: "border-amber-300" },
+    { key: "DELETE", label: "Not Important or Urgent", sublabel: "Eliminate", accent: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400", border: "border-gray-300" },
   ];
 
 const quadrantFlags: Record<Quadrant, { urgent: boolean; important: boolean }> = {
