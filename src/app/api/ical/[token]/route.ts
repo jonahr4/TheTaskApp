@@ -123,7 +123,7 @@ export async function GET(
   });
 }
 
-function getQuadrant(urgent: boolean, important: boolean): string {
+export function getQuadrant(urgent: boolean, important: boolean): string {
   if (urgent && important) return "Do First";
   if (!urgent && important) return "Schedule";
   if (urgent && !important) return "Delegate";

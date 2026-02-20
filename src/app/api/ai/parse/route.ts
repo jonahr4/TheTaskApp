@@ -16,14 +16,14 @@ type AiParseResult = {
   tasks: AiTask[];
 };
 
-function firstJsonObject(text: string): string | null {
+export function firstJsonObject(text: string): string | null {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start === -1 || end === -1 || end <= start) return null;
   return text.slice(start, end + 1);
 }
 
-function normalizeTask(raw: Partial<AiTask>): AiTask {
+export function normalizeTask(raw: Partial<AiTask>): AiTask {
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
   const notes = typeof raw.notes === "string" ? raw.notes.trim() : "";
   const dueDate = typeof raw.dueDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.dueDate) ? raw.dueDate : null;
@@ -43,7 +43,7 @@ function normalizeTask(raw: Partial<AiTask>): AiTask {
   };
 }
 
-function normalizeResult(raw: any): AiParseResult {
+export function normalizeResult(raw: any): AiParseResult {
   const tasksRaw = Array.isArray(raw?.tasks) ? raw.tasks : raw ? [raw] : [];
   const tasks = tasksRaw.map((t: Partial<AiTask>) => normalizeTask(t)).slice(0, 3);
   return { tasks };
