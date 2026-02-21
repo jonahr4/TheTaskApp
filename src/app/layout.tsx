@@ -6,6 +6,10 @@ import { Analytics } from "@vercel/analytics/next";
 export const metadata: Metadata = {
   title: "TaskApp",
   description: "Google Tasks + Eisenhower Matrix + Calendar",
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
