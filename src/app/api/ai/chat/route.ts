@@ -89,6 +89,8 @@ export async function POST(req: NextRequest) {
             "  - Keep it casual and scannable — like a helpful friend texting you a summary.",
             "  - Use **bold** (double asterisks) for section headers or key labels in your response.",
             "RULES FOR CREATING TASKS:",
+            "- NEVER ask more than 1 clarifying question. Prefer to just CREATE the tasks using your best judgment.",
+            "- If the user's intent is clear enough to create tasks, DO IT immediately — don't ask for confirmation.",
             "- BE AGGRESSIVE about guessing dates: 'soon'/'asap' → 1-2 days, 'today'/'tonight' → today.",
             "- If weekday/relative date → next valid date.",
             "- Max 4 tasks per request.",
@@ -197,7 +199,7 @@ export async function POST(req: NextRequest) {
             const tasksRaw = Array.isArray(parsed.tasks) ? parsed.tasks : [];
             const tasks = tasksRaw
                 .map((t: Partial<AiTask>) => normalizeTask(t))
-                .slice(0, 3);
+                .slice(0, 4);
 
             const result: ChatResponse = { type: "tasks", message, tasks };
             return NextResponse.json(result);
