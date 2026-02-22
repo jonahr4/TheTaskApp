@@ -17,9 +17,9 @@
   --accent-muted: #c7d2fe;
   --destructive: #ef4444;
   --destructive-fg: #ffffff;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.03);
-  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
@@ -33,7 +33,8 @@
   border-color: var(--border);
 }
 
-html, body {
+html,
+body {
   height: 100%;
 }
 
@@ -51,7 +52,12 @@ body {
   --fc-event-border-color: transparent;
   font-family: inherit !important;
 }
-.fc .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 600 !important; }
+
+.fc .fc-toolbar-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+}
+
 .fc .fc-button {
   border-radius: var(--radius-full) !important;
   font-size: 0.8rem !important;
@@ -62,13 +68,23 @@ body {
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-sm) !important;
 }
-.fc .fc-button:hover { background: var(--bg-hover) !important; }
+
+.fc .fc-button:hover {
+  background: var(--bg-hover) !important;
+}
+
 .fc .fc-button-active {
   background: var(--accent) !important;
   color: var(--text-inverse) !important;
   border-color: var(--accent) !important;
 }
-.fc .fc-daygrid-day-number { font-size: 0.8rem; font-weight: 500; padding: 6px 8px; }
+
+.fc .fc-daygrid-day-number {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 6px 8px;
+}
+
 .fc .fc-event {
   border-radius: var(--radius-sm) !important;
   padding: 2px 6px !important;
@@ -76,10 +92,29 @@ body {
   font-weight: 500 !important;
   cursor: pointer !important;
 }
+
 .fc .fc-col-header-cell-cushion {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--text-secondary);
+}
+
+/* Chat scroll */
+.chat-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
 }
