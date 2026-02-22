@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
             "  - NEVER use 24-hour time like '09:00' or '17:00'. Always use '9:00 AM' or '5:00 PM'.",
             "  - Write in natural, conversational sentences. Avoid overly formal bullet lists with dashes.",
             "  - Keep it casual and scannable — like a helpful friend texting you a summary.",
+            "  - Use **bold** (double asterisks) for section headers or key labels in your response.",
             "RULES FOR CREATING TASKS:",
             "- BE AGGRESSIVE about guessing dates: 'soon'/'asap' → 1-2 days, 'today'/'tonight' → today.",
             "- If weekday/relative date → next valid date.",
