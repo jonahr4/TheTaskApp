@@ -12,6 +12,7 @@ export type Task = {
   groupId: string | null;
   autoUrgentDays: number | null;
   completed: boolean;
+  archived?: boolean;
   order: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -21,6 +22,7 @@ export type TaskGroup = {
   id: string;
   name: string;
   color: string | null;
+  archived?: boolean;
   order: number;
   createdAt: Timestamp;
 };

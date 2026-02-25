@@ -7,8 +7,10 @@ import { Input } from "./ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { createGroup, updateGroup, deleteGroup } from "@/lib/firestore";
+import { collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { TaskGroup } from "@/lib/types";
-import { Trash2, Check } from "lucide-react";
+import { Trash2, Check, Archive } from "lucide-react";
 
 const GROUP_COLORS = [
   "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7",
@@ -50,6 +52,27 @@ export function GroupModal({ open, onOpenChange, group }: Props) {
     onOpenChange(false);
   };
 
+  const handleArchive = async () => {
+    if (!user || !group) return;
+    // Archive the group
+    await updateGroup(user.uid, group.id, { archived: true });
+
+    // Archive all tasks in this group
+    const tasksRef = collection(db, "users", user.uid, "tasks");
+    const q = query(tasksRef, where("groupId", "==", group.id));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((d) => {
+        batch.update(d.ref, { archived: true });
+      });
+      await batch.commit();
+    }
+
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogHeader>
@@ -79,9 +102,14 @@ export function GroupModal({ open, onOpenChange, group }: Props) {
       </DialogBody>
       <DialogFooter>
         {group && (
-          <Button variant="ghost" size="icon" className="mr-auto text-[var(--destructive)] hover:bg-red-50" onClick={handleDelete}>
-            <Trash2 size={16} />
-          </Button>
+          <div className="flex gap-2 mr-auto">
+            <Button variant="ghost" size="icon" className="text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]" onClick={handleArchive}>
+              <Archive size={16} />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-[var(--destructive)] hover:bg-red-50" onClick={handleDelete}>
+              <Trash2 size={16} />
+            </Button>
+          </div>
         )}
         <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
         <Button onClick={handleSave} disabled={!name.trim()}>
