@@ -7,8 +7,15 @@ export const metadata: Metadata = {
   title: "TaskApp",
   description: "Google Tasks + Eisenhower Matrix + Calendar",
   icons: {
-    icon: "/icon.png",
+    icon: "/icon.svg",
     apple: "/icon.png",
+  },
+  openGraph: {
+    images: ["/opengraph-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/twitter-image.png"],
   },
 };
 

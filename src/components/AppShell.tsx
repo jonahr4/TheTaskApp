@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Sparkles, BarChart3 } from "lucide-react";
+import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Sparkles, BarChart3, Archive } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/hooks/useTasks";
@@ -152,6 +152,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                     >
                       <BarChart3 size={14} />
                       Stats
+                    </Link>
+                    <Link
+                      href="/archives"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-3 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      <Archive size={14} />
+                      Archives
                     </Link>
                     <button
                       onClick={() => { setUserMenuOpen(false); logOut(); }}

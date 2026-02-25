@@ -27,7 +27,8 @@ const quadrantLabels: { key: Quadrant; label: string; color: string }[] = [
 export default function CalendarPage() {
   const calendarRef = useRef<FullCalendar>(null);
   const { user } = useAuth();
-  const { tasks } = useTasks(user?.uid);
+  // Fetch all tasks, including archived ones, so we can filter them locally.
+  const { tasks } = useTasks(user?.uid, true);
   const { groups } = useTaskGroups(user?.uid);
   const [taskModal, setTaskModal] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -36,6 +37,7 @@ export default function CalendarPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(true);
   const [showInProgress, setShowInProgress] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<Set<string>>(new Set(["__all__"]));
   const [selectedQuadrants, setSelectedQuadrants] = useState<Set<Quadrant>>(new Set(["DO", "SCHEDULE", "DELEGATE", "DELETE"]));
   const [calendarView, setCalendarView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
@@ -77,7 +79,7 @@ export default function CalendarPage() {
     });
   };
 
-  const hasActiveFilters = !showInProgress || !showCompleted || !allGroupsSelected || !allQuadrantsSelected;
+  const hasActiveFilters = !showInProgress || !showCompleted || showArchived || !allGroupsSelected || !allQuadrantsSelected;
 
   useEffect(() => {
     try {
@@ -86,6 +88,7 @@ export default function CalendarPage() {
         const parsed = JSON.parse(raw);
         if (typeof parsed.showCompleted === "boolean") setShowCompleted(parsed.showCompleted);
         if (typeof parsed.showInProgress === "boolean") setShowInProgress(parsed.showInProgress);
+        if (typeof parsed.showArchived === "boolean") setShowArchived(parsed.showArchived);
         if (Array.isArray(parsed.selectedGroups)) setSelectedGroups(new Set(parsed.selectedGroups));
         if (Array.isArray(parsed.selectedQuadrants)) setSelectedQuadrants(new Set(parsed.selectedQuadrants));
       }
@@ -103,6 +106,7 @@ export default function CalendarPage() {
     const payload = {
       showCompleted,
       showInProgress,
+      showArchived,
       selectedGroups: Array.from(selectedGroups),
       selectedQuadrants: Array.from(selectedQuadrants),
     };
@@ -111,7 +115,7 @@ export default function CalendarPage() {
     } catch {
       // ignore storage errors
     }
-  }, [persistReady, showCompleted, showInProgress, selectedGroups, selectedQuadrants]);
+  }, [persistReady, showCompleted, showInProgress, showArchived, selectedGroups, selectedQuadrants]);
 
   useEffect(() => {
     if (!persistReady) return;
@@ -133,6 +137,11 @@ export default function CalendarPage() {
   const events = tasks
     .filter((t) => {
       if (!t.dueDate) return false;
+      // Skip archived tasks unless showArchived is true
+      if (!showArchived && t.archived) return false;
+      // Also potentially hide unarchived tasks if we only want to view archived ones? 
+      // User requested "added to the filters there to be able to check it on and see arhives tasks".
+      // We will just show them alongside unarchived if checked.
       if (t.completed && !showCompleted) return false;
       if (!t.completed && !showInProgress) return false;
       if (!allGroupsSelected) {
@@ -218,6 +227,10 @@ export default function CalendarPage() {
               <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
                 <input type="checkbox" checked={showCompleted} onChange={() => setShowCompleted(!showCompleted)} className="accent-[var(--accent)] h-3.5 w-3.5" />
                 <span className="text-sm text-[var(--text-primary)]">Completed</span>
+              </label>
+              <label className="flex items-center gap-2.5 py-1.5 cursor-pointer">
+                <input type="checkbox" checked={showArchived} onChange={() => setShowArchived(!showArchived)} className="accent-[var(--accent)] h-3.5 w-3.5" />
+                <span className="text-sm text-[var(--text-primary)]">Archived</span>
               </label>
             </div>
             {/* Quadrants */}

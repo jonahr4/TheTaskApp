@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, Pencil, Copy, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Copy, CheckCircle2, Circle, Trash2, Archive } from "lucide-react";
 
 type Props = {
   completed: boolean;
@@ -9,9 +9,10 @@ type Props = {
   onDuplicate: () => void;
   onToggleComplete: () => void;
   onDelete: () => void;
+  onArchive?: () => void;
 };
 
-export function TaskRowMenu({ completed, onEdit, onDuplicate, onToggleComplete, onDelete }: Props) {
+export function TaskRowMenu({ completed, onEdit, onDuplicate, onToggleComplete, onDelete, onArchive }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -28,6 +29,7 @@ export function TaskRowMenu({ completed, onEdit, onDuplicate, onToggleComplete, 
     { label: "Edit", icon: Pencil, action: onEdit },
     { label: "Duplicate", icon: Copy, action: onDuplicate },
     { label: completed ? "Mark incomplete" : "Mark complete", icon: completed ? Circle : CheckCircle2, action: onToggleComplete },
+    ...(onArchive ? [{ label: "Archive", icon: Archive, action: onArchive }] : []),
     { label: "Delete", icon: Trash2, action: onDelete, destructive: true },
   ];
 
@@ -45,11 +47,10 @@ export function TaskRowMenu({ completed, onEdit, onDuplicate, onToggleComplete, 
           {items.map((item) => (
             <button
               key={item.label}
-              className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
-                item.destructive
+              className={`flex w-full items-center gap-2.5 px-3 py-2 text-xs transition-colors ${item.destructive
                   ? "text-red-500 hover:bg-red-50"
                   : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
-              }`}
+                }`}
               onClick={(e) => { e.stopPropagation(); item.action(); setOpen(false); }}
             >
               <item.icon size={13} />

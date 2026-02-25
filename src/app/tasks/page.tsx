@@ -473,6 +473,7 @@ export default function TasksPage() {
                                         onDuplicate={() => duplicateTask(t)}
                                         onToggleComplete={() => user && updateTask(user.uid, t.id, { completed: !t.completed })}
                                         onDelete={() => user && deleteTask(user.uid, t.id)}
+                                        onArchive={() => user && updateTask(user.uid, t.id, { archived: true })}
                                       />
                                     </div>
                                   </div>
