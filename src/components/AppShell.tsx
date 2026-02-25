@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--border-light)] bg-[var(--bg-card)] px-4 sm:px-6 lg:px-12">
         {/* Logo left */}
         <div className="flex items-center gap-2 w-48">
-          <img src="/icon.png" alt="TaskApp" className="h-7 w-7 rounded-[var(--radius-sm)]" />
+          <img src="/icon.svg" alt="TaskApp" className="h-7 w-7 rounded-[var(--radius-sm)]" />
           <span className="text-sm font-semibold text-[var(--text-primary)]">TaskApp</span>
         </div>
 
