@@ -12,7 +12,7 @@ export default function PrivacyPage() {
             <div style={styles.card}>
                 <header style={styles.header}>
                     <h1 style={styles.title}>Privacy Policy</h1>
-                    <p style={styles.updated}>Last updated: February 2026</p>
+                    <p style={styles.updated}>Last updated: March 2026</p>
                 </header>
 
                 <Section title="What We Collect">
@@ -44,10 +44,12 @@ export default function PrivacyPage() {
                     <ul style={styles.list}>
                         <Li label="Firebase (Google)">Authentication and database</Li>
                         <Li label="Azure AI (Microsoft)">
-                            AI task parsing and chat — your task text is sent for processing
-                            but is not stored by the AI service
+                            AI task parsing and chat — your typed text, timezone, and
+                            task group names are sent for processing but are not stored
+                            by the AI service
                         </Li>
                         <Li label="Google Sign-In">Optional authentication method</Li>
+                        <Li label="Apple Sign-In">Optional authentication method</Li>
                     </ul>
                 </Section>
 
@@ -61,6 +63,22 @@ export default function PrivacyPage() {
                             We do not share your data with advertisers
                         </Li>
                     </ul>
+                </Section>
+
+                <Section title="AI Consent">
+                    <p style={styles.text}>
+                        AI features require your consent before any data is shared. You
+                        can revoke AI data sharing permission at any time by clearing app
+                        data or reinstalling the app.
+                    </p>
+                </Section>
+
+                <Section title="Data Retention">
+                    <p style={styles.text}>
+                        Task data is retained until you delete your account or individual
+                        tasks. We do not retain data beyond what is necessary to provide
+                        the service.
+                    </p>
                 </Section>
 
                 <Section title="Data Deletion">
