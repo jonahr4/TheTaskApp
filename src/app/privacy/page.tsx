@@ -29,6 +29,11 @@ export default function PrivacyPage() {
                         <Li label="Calendar tokens">
                             for iCal feed integration (generated, not personal)
                         </Li>
+                        <Li label="Usage data">
+                            We collect anonymous usage statistics such as which features
+                            are used, how many tasks are created, and app session
+                            information to improve the app experience.
+                        </Li>
                     </ul>
                 </Section>
 
@@ -53,11 +58,22 @@ export default function PrivacyPage() {
                     </ul>
                 </Section>
 
+                <Section title="Usage Analytics">
+                    <p style={styles.text}>
+                        We collect aggregated usage data for signed-in users, including
+                        counts of tasks created, AI prompts sent, and feature usage
+                        frequency. This data is used solely to improve the app and is
+                        stored in our Firebase database. It is not shared with or sold
+                        to third parties.
+                    </p>
+                </Section>
+
                 <Section title="What We Don't Do">
                     <ul style={styles.list}>
                         <Li label="No selling">We do not sell your data</Li>
                         <Li label="No tracking">
-                            We do not use tracking or analytics
+                            We do not use third-party ad tracking or sell your data
+                            to advertisers
                         </Li>
                         <Li label="No ads">
                             We do not share your data with advertisers
@@ -70,6 +86,10 @@ export default function PrivacyPage() {
                         AI features require your consent before any data is shared. You
                         can revoke AI data sharing permission at any time by clearing app
                         data or reinstalling the app.
+                    </p>
+                    <p style={{ ...styles.text, marginTop: 10 }}>
+                        AI parses are subject to a daily limit (25 per day by default).
+                        This limit helps us manage costs and may be adjusted.
                     </p>
                 </Section>
 
