@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Analytics } from "@vercel/analytics/next";
-
+import { SpeedInsights } from "@vercel/speed-insights/next";
 export const metadata: Metadata = {
   title: "TaskApp",
   description: "Google Tasks + Eisenhower Matrix + Calendar",
@@ -25,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
