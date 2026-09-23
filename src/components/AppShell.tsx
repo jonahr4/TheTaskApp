@@ -4,12 +4,20 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Sparkles, BarChart3, Archive } from "lucide-react";
+import { CheckSquare, Grid3X3, Calendar, LogOut, ChevronDown, Link2, Sparkles, BarChart3, Archive, Sun, Moon, Monitor, Search } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTasks } from "@/hooks/useTasks";
 import { useAutoUrgent } from "@/hooks/useAutoUrgent";
+import { useTheme, type ThemeChoice } from "@/hooks/useTheme";
 import { CalendarFeedModal } from "@/components/CalendarFeedModal";
+import { CommandPalette } from "@/components/CommandPalette";
+
+const themeOptions: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
+  { value: "auto", label: "Auto", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
 
 const navItems = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -22,12 +30,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, logOut } = useAuth();
   const { tasks } = useTasks(user?.uid);
   useAutoUrgent(user?.uid, tasks);
+  const { choice: themeChoice, setChoice: setThemeChoice } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [calModalOpen, setCalModalOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const currentNav = navItems.find((n) => n.href === pathname) || navItems[0];
+
+  // Global ⌘K / Ctrl+K shortcut for the command palette (only when signed in)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        if (!user) return;
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -110,7 +133,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* User menu right */}
-        <div className="flex items-center justify-end w-48">
+        <div className="flex items-center justify-end w-48 gap-1">
+          {user && (
+            <button
+              onClick={() => setPaletteOpen(true)}
+              title="Search tasks (⌘K)"
+              className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-full)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              <Search size={16} />
+            </button>
+          )}
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -168,6 +200,26 @@ export function AppShell({ children }: { children: ReactNode }) {
                       <LogOut size={14} />
                       Sign out
                     </button>
+                    <div className="mt-1 border-t border-[var(--border-light)] px-3 pt-2 pb-1">
+                      <p className="text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-wide mb-1.5">Theme</p>
+                      <div className="grid grid-cols-3 gap-1">
+                        {themeOptions.map(({ value, label, icon: Icon }) => (
+                          <button
+                            key={value}
+                            onClick={() => setThemeChoice(value)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 rounded-[var(--radius-sm)] px-2 py-2 text-[11px] font-medium transition-colors",
+                              themeChoice === value
+                                ? "bg-[var(--accent-light)] text-[var(--accent)]"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]"
+                            )}
+                          >
+                            <Icon size={15} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>
@@ -180,6 +232,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1 overflow-auto px-4 sm:px-6 md:px-10">{children}</main>
 
       <CalendarFeedModal open={calModalOpen} onOpenChange={setCalModalOpen} />
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }

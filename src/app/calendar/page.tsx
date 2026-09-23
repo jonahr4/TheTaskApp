@@ -331,6 +331,7 @@ export default function CalendarPage() {
         task={editTask}
         defaultDueDate={newTaskDate}
         defaultDueTime={newTaskTime}
+        createdFrom="calendar"
       />
     </AppShell>
   );

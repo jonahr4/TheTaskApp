@@ -9,15 +9,37 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { useTasks } from "@/hooks/useTasks";
-import type { Task, Quadrant } from "@/lib/types";
-import { Trash2, Check } from "lucide-react";
+import type { Task, Quadrant, CreatedFrom } from "@/lib/types";
+import { Trash2, Check, Bell, Minus, Plus } from "lucide-react";
 
-const miniQuadrants: { key: Quadrant; label: string; urgent: boolean; important: boolean; bg: string; bgSelected: string; border: string; text: string; ring: string }[] = [
-  { key: "DO", label: "Do First", urgent: true, important: true, bg: "bg-red-50", bgSelected: "bg-red-100", border: "border-red-200", text: "text-red-700", ring: "ring-red-400" },
-  { key: "SCHEDULE", label: "Schedule", urgent: false, important: true, bg: "bg-blue-50", bgSelected: "bg-blue-100", border: "border-blue-200", text: "text-blue-700", ring: "ring-blue-400" },
-  { key: "DELEGATE", label: "Delegate", urgent: true, important: false, bg: "bg-amber-50", bgSelected: "bg-amber-100", border: "border-amber-200", text: "text-amber-700", ring: "ring-amber-400" },
-  { key: "DELETE", label: "Eliminate", urgent: false, important: false, bg: "bg-gray-50", bgSelected: "bg-gray-100", border: "border-gray-200", text: "text-gray-600", ring: "ring-gray-400" },
+const miniQuadrants: { key: Quadrant; label: string; urgent: boolean; important: boolean }[] = [
+  { key: "DO", label: "Do First", urgent: true, important: true },
+  { key: "SCHEDULE", label: "Schedule", urgent: false, important: true },
+  { key: "DELEGATE", label: "Delegate", urgent: true, important: false },
+  { key: "DELETE", label: "Eliminate", urgent: false, important: false },
 ];
+
+// Quadrant chrome driven by CSS vars so it follows light/dark theme
+// (vars are ported from the mobile app's QUADRANT_META).
+const qVar = (key: Quadrant, prop: "bg" | "color" | "border") =>
+  `var(--q-${key.toLowerCase()}-${prop})`;
+
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onChange(!checked)}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-[var(--accent)]" : "bg-[var(--bg-active)]"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${checked ? "left-[22px]" : "left-0.5"}`}
+      />
+    </button>
+  );
+}
 
 type Props = {
   open: boolean;
@@ -28,9 +50,11 @@ type Props = {
   defaultImportant?: boolean;
   defaultDueDate?: string | null;
   defaultDueTime?: string | null;
+  /** Where the task is being created from — stamped on new tasks (mobile parity). */
+  createdFrom?: CreatedFrom;
 };
 
-export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate, defaultDueTime }: Props) {
+export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate, defaultDueTime, createdFrom }: Props) {
   const { user } = useAuth();
   const { groups } = useTaskGroups(user?.uid);
   const { tasks } = useTasks(user?.uid);
@@ -44,8 +68,10 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
   const [dueTime, setDueTime] = useState("");
   const [groupId, setGroupId] = useState("");
   const [completed, setCompleted] = useState(false);
-  const [autoUrgentDays, setAutoUrgentDays] = useState<string>("off");
-  const [customDays, setCustomDays] = useState("");
+  const [reminder, setReminder] = useState(false);
+  // Auto-urgent: mobile-style toggle + stepper (1–30 days), not a dropdown
+  const [autoUrgentEnabled, setAutoUrgentEnabled] = useState(false);
+  const [autoUrgentDays, setAutoUrgentDays] = useState(1);
 
   useEffect(() => {
     if (task) {
@@ -57,14 +83,12 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setDueTime(task.dueTime || "");
       setGroupId(task.groupId || "");
       setCompleted(task.completed);
+      setReminder(task.reminder ?? false);
       // Check if task has no priority (null values)
       setNoPriority(task.urgent === null || task.important === null);
       const days = task.autoUrgentDays;
-      if (days == null) { setAutoUrgentDays("off"); setCustomDays(""); }
-      else if (days === 1) { setAutoUrgentDays("1"); setCustomDays(""); }
-      else if (days === 2) { setAutoUrgentDays("2"); setCustomDays(""); }
-      else if (days === 7) { setAutoUrgentDays("7"); setCustomDays(""); }
-      else { setAutoUrgentDays("custom"); setCustomDays(String(days)); }
+      setAutoUrgentEnabled(days != null && days > 0);
+      setAutoUrgentDays(days && days > 0 ? days : 1);
     } else {
       setTitle("");
       setNotes("");
@@ -75,8 +99,9 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       setDueTime(defaultDueTime || "");
       setGroupId(defaultGroupId || "");
       setCompleted(false);
-      setAutoUrgentDays("off");
-      setCustomDays("");
+      setReminder(false);
+      setAutoUrgentEnabled(false);
+      setAutoUrgentDays(1);
     }
   }, [task, open, defaultGroupId, defaultUrgent, defaultImportant, defaultDueDate, defaultDueTime]);
 
@@ -90,14 +115,15 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
       dueDate: dueDate || null,
       dueTime: dueTime || null,
       groupId: groupId || null,
-      autoUrgentDays: autoUrgentDays === "off" ? null : autoUrgentDays === "custom" ? (parseInt(customDays) || null) : parseInt(autoUrgentDays),
+      autoUrgentDays: autoUrgentEnabled ? autoUrgentDays : null,
+      reminder,
       completed,
       order: task ? task.order : tasks.length,
     };
     if (task) {
       await updateTask(user.uid, task.id, data);
     } else {
-      await createTask(user.uid, data as any);
+      await createTask(user.uid, { ...data, createdFrom: createdFrom ?? "tasks" } as any);
     }
     onOpenChange(false);
   };
@@ -165,17 +191,21 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
                       setNoPriority(false);
                     }
                   }}
-                  className={`relative flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2.5 text-left transition-all ${selected
-                    ? `${q.bgSelected} ${q.border} ring-2 ${q.ring} ring-offset-1`
-                    : `${q.bg} ${q.border} hover:${q.bgSelected} opacity-70 hover:opacity-100`
-                    }`}
+                  style={{
+                    backgroundColor: qVar(q.key, "bg"),
+                    borderColor: qVar(q.key, "border"),
+                    color: qVar(q.key, "color"),
+                    boxShadow: selected ? `0 0 0 2px ${qVar(q.key, "color")}` : undefined,
+                    opacity: selected ? 1 : 0.75,
+                  }}
+                  className="relative flex items-center gap-2 rounded-[var(--radius-md)] border px-3 py-2.5 text-left transition-all hover:opacity-100"
                 >
                   {selected && (
-                    <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${q.bgSelected} ${q.text}`}>
-                      <Check size={10} strokeWidth={3} />
-                    </div>
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: qVar(q.key, "color") }}>
+                      <Check size={10} strokeWidth={3} className="text-white" />
+                    </span>
                   )}
-                  <span className={`text-xs font-medium ${q.text}`}>{q.label}</span>
+                  <span className="text-xs font-medium">{q.label}</span>
                 </button>
               );
             })}
@@ -207,36 +237,58 @@ export function TaskModal({ open, onOpenChange, task, defaultGroupId, defaultUrg
               ))}
             </select>
           </div>
-          {dueDate && (
-            <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wide">Auto-urgent</label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={autoUrgentDays}
-                  onChange={(e) => setAutoUrgentDays(e.target.value)}
-                  className="flex h-9 w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-card)] px-5 py-2 text-sm text-[var(--text-primary)]"
-                >
-                  <option value="off">Off</option>
-                  <option value="1">1 day before</option>
-                  <option value="2">2 days before</option>
-                  <option value="7">1 week before</option>
-                  <option value="custom">Custom</option>
-                </select>
-                {autoUrgentDays === "custom" && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={customDays}
-                      onChange={(e) => setCustomDays(e.target.value)}
-                      placeholder="Days"
-                      className="w-20"
-                    />
-                    <span className="text-xs text-[var(--text-tertiary)]">days</span>
-                  </div>
-                )}
+
+          {/* Reminder — the field already existed on the type; now it has UI (mobile parity) */}
+          <div className="sm:col-span-2 flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3.5 py-2.5">
+            <div className="flex items-center gap-2.5">
+              <Bell size={15} className="text-[var(--text-secondary)]" />
+              <div>
+                <p className="text-sm font-medium text-[var(--text-primary)]">Reminder</p>
+                <p className="text-[11px] text-[var(--text-tertiary)]">Get notified before this task is due</p>
               </div>
-              <p className="mt-1 text-[10px] text-[var(--text-tertiary)]">Automatically mark as urgent before due date</p>
+            </div>
+            <Toggle checked={reminder} onChange={setReminder} label="Reminder" />
+          </div>
+
+          {/* Auto-urgent — mobile-style toggle + stepper */}
+          {dueDate && (
+            <div className="sm:col-span-2 rounded-[var(--radius-md)] border border-[var(--border-light)] bg-[var(--bg-card)] px-3.5 py-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">Auto-urgent</p>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">
+                    {autoUrgentEnabled
+                      ? `Mark urgent ${autoUrgentDays} day${autoUrgentDays > 1 ? "s" : ""} before due`
+                      : "Automatically mark as urgent before the due date"}
+                  </p>
+                </div>
+                <Toggle checked={autoUrgentEnabled} onChange={setAutoUrgentEnabled} label="Auto-urgent" />
+              </div>
+              {autoUrgentEnabled && (
+                <div className="mt-2.5 flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="Decrease days"
+                    onClick={() => setAutoUrgentDays((d) => Math.max(1, d - 1))}
+                    disabled={autoUrgentDays <= 1}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="min-w-16 text-center text-sm font-semibold text-[var(--text-primary)]">
+                    {autoUrgentDays} day{autoUrgentDays > 1 ? "s" : ""}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Increase days"
+                    onClick={() => setAutoUrgentDays((d) => Math.min(30, d + 1))}
+                    disabled={autoUrgentDays >= 30}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-40"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

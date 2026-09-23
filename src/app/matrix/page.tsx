@@ -6,26 +6,23 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTasks } from "@/hooks/useTasks";
 import { createTask, updateTask, deleteTask } from "@/lib/firestore";
 import { TaskModal } from "@/components/TaskModal";
-import { getQuadrant, type Task, type Quadrant } from "@/lib/types";
+import { getQuadrant, QUADRANT_META, type Task, type Quadrant } from "@/lib/types";
 import { useTaskGroups } from "@/hooks/useTaskGroups";
 import { Plus, SlidersHorizontal, X, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { TaskRowMenu } from "@/components/TaskRowMenu";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
-const quadrants: {
-  key: Quadrant;
-  label: string;
-  sublabel: string;
-  accent: string;
-  bg: string;
-  dot: string;
-  border: string;
-}[] = [
-    { key: "DO", label: "Important & Urgent", sublabel: "Do First", accent: "text-red-700", bg: "bg-red-100", dot: "bg-red-500", border: "border-red-300" },
-    { key: "SCHEDULE", label: "Important & Not Urgent", sublabel: "Schedule", accent: "text-blue-700", bg: "bg-blue-100", dot: "bg-blue-500", border: "border-blue-300" },
-    { key: "DELEGATE", label: "Urgent & Not Important", sublabel: "Delegate", accent: "text-amber-700", bg: "bg-amber-100", dot: "bg-amber-500", border: "border-amber-300" },
-    { key: "DELETE", label: "Not Important or Urgent", sublabel: "Eliminate", accent: "text-gray-600", bg: "bg-gray-100", dot: "bg-gray-400", border: "border-gray-300" },
-  ];
+// Quadrant chrome driven by CSS vars so it follows light/dark theme
+// (vars are ported from the mobile app's QUADRANT_META).
+const qVar = (key: Quadrant, prop: "bg" | "color" | "border") =>
+  `var(--q-${key.toLowerCase()}-${prop})`;
+
+const quadrants: { key: Quadrant }[] = [
+  { key: "DO" },
+  { key: "SCHEDULE" },
+  { key: "DELEGATE" },
+  { key: "DELETE" },
+];
 
 const quadrantFlags: Record<Quadrant, { urgent: boolean; important: boolean }> = {
   DO: { urgent: true, important: true },
@@ -171,6 +168,7 @@ export default function MatrixPage() {
       groupId: t.groupId || null,
       completed: false,
       order: tasks.length,
+      createdFrom: "matrix",
     } as any);
   };
 
@@ -318,17 +316,22 @@ export default function MatrixPage() {
           <div className="flex h-[calc(100%-3rem)] gap-4">
             {/* Matrix grid */}
             <div className="flex-1 grid grid-cols-1 auto-rows-fr gap-4 md:grid-cols-2 md:grid-rows-2 md:gap-5">
-              {quadrants.map(({ key, label, sublabel, accent, bg, dot, border }) => {
+              {quadrants.map(({ key }) => {
                 const items = byQuadrant(key);
+                const meta = QUADRANT_META[key];
                 return (
-                  <div key={key} className={`flex flex-col rounded-[var(--radius-lg)] ${bg} ${border} border overflow-hidden`}>
+                  <div
+                    key={key}
+                    className="flex flex-col rounded-[var(--radius-lg)] border overflow-hidden"
+                    style={{ backgroundColor: qVar(key, "bg"), borderColor: qVar(key, "border") }}
+                  >
                     {/* Quadrant header */}
                     <div className="flex items-center justify-between px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <div className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+                        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: qVar(key, "color") }} />
                         <div>
-                          <h3 className={`text-sm font-semibold ${accent}`}>{label}</h3>
-                          <p className="text-[11px] text-[var(--text-tertiary)]">{sublabel}</p>
+                          <h3 className="text-sm font-semibold" style={{ color: qVar(key, "color") }}>{meta.label}</h3>
+                          <p className="text-[11px] text-[var(--text-tertiary)]">{meta.sublabel}</p>
                         </div>
                         <span className="flex h-5 min-w-5 items-center justify-center rounded-[var(--radius-full)] bg-white/60 px-1.5 text-[11px] font-medium text-[var(--text-tertiary)]">
                           {items.length}
@@ -357,7 +360,7 @@ export default function MatrixPage() {
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-white/70 px-3 py-1.5 cursor-grab hover:bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] bg-white rotate-1" : ""}`}
+                                  className={`group flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--bg-card)] px-3 py-1.5 cursor-grab hover:bg-[var(--bg-hover)] shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:shadow-[var(--shadow-sm)] ${snapshot.isDragging ? "shadow-[var(--shadow-lg)] rotate-1" : ""}`}
                                   onClick={() => openEdit(t)}
                                 >
                                   <button
@@ -518,6 +521,7 @@ export default function MatrixPage() {
         task={editTask}
         defaultUrgent={newQuadrant ? defaultUrgent : undefined}
         defaultImportant={newQuadrant ? defaultImportant : undefined}
+        createdFrom="matrix"
       />
     </AppShell>
   );
