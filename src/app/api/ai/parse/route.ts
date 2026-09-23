@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,11 @@ export function normalizeResult(raw: any): AiParseResult {
 
 export async function POST(req: NextRequest) {
   try {
+    const uid = await requireUser(req);
+    if (!uid) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const { text, today, timezone, groups } = (await req.json()) as {
       text?: string;
       today?: string;

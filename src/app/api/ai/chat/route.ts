@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requireUser } from "@/lib/api-auth";
 import { firstJsonObject, normalizeTask } from "../parse/route";
 
 export const runtime = "nodejs";
@@ -28,6 +29,11 @@ type ChatResponse =
 
 export async function POST(req: NextRequest) {
     try {
+        const uid = await requireUser(req);
+        if (!uid) {
+            return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+        }
+
         const { text, today, timezone, groups, existingTasks } = (await req.json()) as {
             text?: string;
             today?: string;
