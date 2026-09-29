@@ -227,4 +227,37 @@ describe("useAutoUrgent", () => {
 
         expect(updateTask).toHaveBeenCalledWith("user-1", "t8", { urgent: true });
     });
+
+    it("checks immediately when tasks change, without waiting for the interval", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+
+        // Mount with no eligible tasks (e.g. Firestore snapshot not yet loaded).
+        const { rerender } = renderHook(({ tasks }) => useAutoUrgent("user-1", tasks), {
+            initialProps: { tasks: [] as ReturnType<typeof mockTask>[] },
+        });
+        await Promise.resolve();
+        expect(updateTask).not.toHaveBeenCalled();
+
+        // A newly eligible task arrives; it must be checked right away,
+        // not up to 5 minutes later when the interval fires.
+        const eligible = [
+            mockTask({
+                id: "t9",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+        rerender({ tasks: eligible });
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // No timer advanced: this only passes if the effect re-ran on the
+        // tasks change instead of waiting for the 5-minute interval.
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t9", { urgent: true });
+    });
 });

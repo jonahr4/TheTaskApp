@@ -53,7 +53,9 @@ export function useAutoUrgent(uid: string | undefined, tasks: Task[]) {
       }
     };
 
-    // Run once on mount, then re-check on a timer for long-lived sessions.
+    // Run once on mount and whenever tasks change (e.g. the initial
+    // Firestore snapshot arriving after mount), then re-check on a timer
+    // for long-lived sessions.
     void check();
 
     const interval = setInterval(() => void check(), CHECK_INTERVAL_MS);
@@ -61,5 +63,5 @@ export function useAutoUrgent(uid: string | undefined, tasks: Task[]) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [uid]);
+  }, [uid, tasks]);
 }
