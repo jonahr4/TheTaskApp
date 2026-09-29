@@ -117,4 +117,114 @@ describe("useAutoUrgent", () => {
 
         expect(updateTask).not.toHaveBeenCalled();
     });
+
+    it("logs an error instead of failing silently when the write is rejected", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+        const writeError = new Error("permission-denied");
+        (updateTask as jest.Mock).mockRejectedValueOnce(writeError);
+        const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+        const tasks = [
+            mockTask({
+                id: "t6",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        // Flush the async check() so the rejected write settles
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t6", { urgent: true });
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining("[auto-urgent] failed to mark task t6 urgent:"),
+            writeError
+        );
+
+        consoleSpy.mockRestore();
+    });
+
+    it("warns and skips tasks with an invalid dueDate", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+        const tasks = [
+            mockTask({
+                id: "t7",
+                dueDate: "not-a-date",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('[auto-urgent] skipping task t7: invalid dueDate "not-a-date"')
+        );
+
+        warnSpy.mockRestore();
+    });
+
+    it("the repeating check uses the latest tasks, not the ones from mount", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+
+        const initialTasks = [
+            mockTask({
+                id: "t8",
+                dueDate: "2026-03-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        const { rerender } = renderHook(({ tasks }) => useAutoUrgent("user-1", tasks), {
+            initialProps: { tasks: initialTasks },
+        });
+
+        // Mount-time check: trigger date (Mar 17) is in the future, no write
+        await Promise.resolve();
+        expect(updateTask).not.toHaveBeenCalled();
+
+        // Tasks update (e.g. user edits the due date closer); the 5-minute
+        // interval must see the new tasks without a remount.
+        const updatedTasks = [
+            mockTask({
+                id: "t8",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+        rerender({ tasks: updatedTasks });
+
+        jest.advanceTimersByTime(5 * 60 * 1000);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t8", { urgent: true });
+    });
 });

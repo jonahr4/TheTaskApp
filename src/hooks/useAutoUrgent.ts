@@ -2,17 +2,25 @@ import { useEffect, useRef } from "react";
 import { updateTask } from "@/lib/firestore";
 import type { Task } from "@/lib/types";
 
+const CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 export function useAutoUrgent(uid: string | undefined, tasks: Task[]) {
-  const ran = useRef(false);
+  // Always check the latest tasks, even from the repeating interval,
+  // without tearing down and re-creating the timer on every snapshot.
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
 
   useEffect(() => {
-    if (!uid || tasks.length === 0) return;
+    if (!uid) return;
 
-    const check = () => {
+    let cancelled = false;
+
+    const check = async () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      for (const t of tasks) {
+      for (const t of tasksRef.current) {
+        if (cancelled) return;
         if (
           t.autoUrgentDays != null &&
           t.dueDate &&
@@ -20,19 +28,38 @@ export function useAutoUrgent(uid: string | undefined, tasks: Task[]) {
           !t.completed
         ) {
           const due = new Date(`${t.dueDate}T00:00:00`);
-          const triggerDate = new Date(due.getTime() - t.autoUrgentDays * 86400000);
+          if (Number.isNaN(due.getTime())) {
+            console.warn(
+              `[auto-urgent] skipping task ${t.id}: invalid dueDate "${t.dueDate}"`
+            );
+            continue;
+          }
+          const triggerDate = new Date(
+            due.getTime() - t.autoUrgentDays * 86400000
+          );
           if (today >= triggerDate) {
-            updateTask(uid, t.id, { urgent: true });
+            try {
+              await updateTask(uid, t.id, { urgent: true });
+            } catch (err) {
+              // Never fail silently: a rejected write used to disappear
+              // without a trace, making the feature look broken.
+              console.error(
+                `[auto-urgent] failed to mark task ${t.id} urgent:`,
+                err
+              );
+            }
           }
         }
       }
     };
 
-    // Run once on mount / when tasks change
-    check();
+    // Run once on mount, then re-check on a timer for long-lived sessions.
+    void check();
 
-    // Re-check every 5 minutes
-    const interval = setInterval(check, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [uid, tasks]);
+    const interval = setInterval(() => void check(), CHECK_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [uid]);
 }
