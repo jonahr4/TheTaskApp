@@ -1,8 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { test as authed } from "./fixtures";
 
 /**
- * Auth flows. The happy-path login is covered by e2e/auth.setup.ts
- * (every other spec starts from that authenticated state).
+ * Logged-out checks use a blank session. Sign-out creates its own account
+ * and the fixture deletes that account afterwards.
  */
 test.describe("auth", () => {
   test.describe("logged out", () => {
@@ -32,7 +33,7 @@ test.describe("auth", () => {
     });
   });
 
-  test("signs out back to /login", async ({ page }) => {
+  authed("signs out back to /login", async ({ page }) => {
     await page.goto("/tasks");
     await expect(page.getByRole("heading", { name: "All Tasks" })).toBeVisible();
     // User menu trigger lives in the top banner.

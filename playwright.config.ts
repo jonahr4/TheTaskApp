@@ -8,21 +8,20 @@ import { defineConfig, devices } from "@playwright/test";
  *
  *   PLAYWRIGHT_BASE_URL=https://the-task-app.vercel.app npx playwright test
  *
- * Auth uses a dedicated dummy Firebase account (never a personal account):
+ * Each test signs up its own Firebase user and deletes that user afterwards.
+ * There is no shared account and no saved storage state.
  *
- *   E2E_TEST_EMAIL=dummy@example.com E2E_TEST_PASSWORD=...
- *
- * See e2e/README.md for the full setup.
+ * See e2e/README.md.
  */
 export default defineConfig({
   testDir: "./e2e",
-  // One worker: specs share a single dummy account backed by Firestore,
-  // so parallel workers would race on the same data.
+  // Serial workers keep Firebase signup under the auth rate limit.
+  // Isolation is still per test, not per worker.
   workers: 1,
   fullyParallel: false,
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "never" }]],
-  timeout: 60_000,
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
@@ -39,14 +38,9 @@ export default defineConfig({
         timeout: 180_000,
       },
   projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/ },
     {
       name: "chromium",
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "e2e/.auth/user.json",
-      },
-      dependencies: ["setup"],
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
 });

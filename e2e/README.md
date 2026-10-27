@@ -1,31 +1,24 @@
 # E2E tests (Playwright)
 
 Browser end-to-end tests for TheTaskApp web. They drive the real app in
-Chromium against the real Firebase backend, signed in as a **dedicated
-dummy account** — never a personal account.
+Chromium against the real Firebase backend.
 
-## One-time setup
+Each authenticated test creates its own email/password user through the
+signup form, uses only that user's tasks, and then deletes the user.
+Deletion is checked by trying to sign in again and expecting
+"Invalid email or password." There is no shared dummy account and no
+saved `storageState`.
 
-1. Create (or reuse) a dummy Firebase Auth email/password account in the
-   Firebase project the app points at. It only ever touches its own
-   per-user task data.
-2. Export its credentials (never commit them):
-
-   ```bash
-   export E2E_TEST_EMAIL="taskapp-e2e-dummy@example.com"
-   export E2E_TEST_PASSWORD="..."
-   ```
-
-3. Install browsers once:
-
-   ```bash
-   npx playwright install chromium
-   ```
+Logged-out tests (bad password, redirect, signup toggle) do not create
+a user.
 
 ## Running
 
+The dev server starts automatically and reads Firebase config from
+`.env.local`.
+
 ```bash
-npm run test:e2e            # local dev server is started automatically
+npm run test:e2e
 ```
 
 Against a deployed preview instead of localhost:
@@ -34,8 +27,7 @@ Against a deployed preview instead of localhost:
 PLAYWRIGHT_BASE_URL=https://the-task-app.vercel.app npm run test:e2e
 ```
 
-Useful flags: `--headed` (watch it run), `--debug`, `-g "auto-urgent"`
-(run one spec), `--reporter=html`.
+Install the browser once if needed: `npx playwright install chromium`.
 
 ## What is covered
 
@@ -48,26 +40,24 @@ Useful flags: `--headed` (watch it run), `--debug`, `-g "auto-urgent"`
 | `matrix.spec.ts` | task appears in its priority quadrant; editing priority moves it |
 | `calendar.spec.ts` | dated task renders as a calendar event; clicking opens the editor |
 
-Auth runs once (`auth.setup.ts`) and every spec reuses the saved session.
-
 ## Test hygiene
 
-- Task/list titles are timestamped per run (`uniqueTitle`) so parallel or
-  repeated runs never collide.
-- Each spec deletes what it created in `afterEach`; cleanup is best-effort
-  so a failing test never cascades.
-- The suite runs with a single worker because specs share one dummy
-  account backed by Firestore.
+- One Firebase account per test (`e2e/fixtures.ts`). Teardown deletes it and verifies sign-in fails.
+- Task and list titles are timestamped per run (`uniqueTitle`).
+- Each data spec also deletes the tasks it created before the account is removed.
+- Workers stay at 1 so signup does not trip Firebase's rate limit. Tests still do not share users.
 
 ## CI
 
 `.github/workflows/e2e.yml` runs the suite on manual dispatch
 (`workflow_dispatch`). Add these repository secrets before running:
 
-- `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD`
-- `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`,
-  `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`,
-  `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
 
 ## Known limitations (not covered)
 
@@ -75,3 +65,5 @@ Auth runs once (`auth.setup.ts`) and every spec reuses the saved session.
 - Drag-and-drop reordering (hello-pangea DnD is flaky under automation;
   priority changes are asserted through the modal instead).
 - Right-click date-cell task creation on the calendar.
+- Deleting the Auth user does not delete that user's Firestore documents.
+  The auth user itself is removed and cannot sign in.

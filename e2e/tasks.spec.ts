@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import {
   uniqueTitle,
   datePlusDays,
@@ -12,7 +12,7 @@ import {
 
 /**
  * Core task lifecycle on /tasks. Every test creates uniquely-titled tasks
- * and removes them afterwards so the dummy account stays clean.
+ * and removes them afterwards. The account fixture then deletes the user.
  */
 test.describe("tasks", () => {
   const created: string[] = [];

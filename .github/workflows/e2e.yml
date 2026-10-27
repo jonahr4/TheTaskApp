@@ -1,7 +1,7 @@
 name: E2E (Playwright)
 
-# Manual dispatch only: needs the dummy-account secrets below, and the
-# suite writes to a real Firebase project (dummy account only).
+# Manual dispatch only. Each test creates and deletes its own Firebase user.
+# The dev server still needs the public Firebase web config.
 on:
   workflow_dispatch:
 
@@ -19,8 +19,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
         env:
-          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL }}
-          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
           NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
           NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
           NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
