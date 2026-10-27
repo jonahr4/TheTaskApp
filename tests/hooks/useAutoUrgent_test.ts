@@ -117,4 +117,174 @@ describe("useAutoUrgent", () => {
 
         expect(updateTask).not.toHaveBeenCalled();
     });
+
+    it("logs an error instead of failing silently when the write is rejected", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+        const writeError = new Error("permission-denied");
+        (updateTask as jest.Mock).mockRejectedValueOnce(writeError);
+        const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+        const tasks = [
+            mockTask({
+                id: "t6",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        // Flush the async check() so the rejected write settles
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t6", { urgent: true });
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining("[auto-urgent] failed to mark task t6 urgent:"),
+            writeError
+        );
+
+        consoleSpy.mockRestore();
+    });
+
+    it("warns and skips tasks with an invalid dueDate", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+        const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+        const tasks = [
+            mockTask({
+                id: "t7",
+                dueDate: "not-a-date",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).not.toHaveBeenCalled();
+        expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('[auto-urgent] skipping task t7: invalid dueDate "not-a-date"')
+        );
+
+        warnSpy.mockRestore();
+    });
+
+    it("the repeating check uses the latest tasks, not the ones from mount", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+
+        const initialTasks = [
+            mockTask({
+                id: "t8",
+                dueDate: "2026-03-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+
+        const { rerender } = renderHook(({ tasks }) => useAutoUrgent("user-1", tasks), {
+            initialProps: { tasks: initialTasks },
+        });
+
+        // Mount-time check: trigger date (Mar 17) is in the future, no write
+        await Promise.resolve();
+        expect(updateTask).not.toHaveBeenCalled();
+
+        // Tasks update (e.g. user edits the due date closer); the 5-minute
+        // interval must see the new tasks without a remount.
+        const updatedTasks = [
+            mockTask({
+                id: "t8",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+        rerender({ tasks: updatedTasks });
+
+        jest.advanceTimersByTime(5 * 60 * 1000);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t8", { urgent: true });
+    });
+
+    it("checks immediately when tasks change, without waiting for the interval", async () => {
+        const today = new Date("2026-02-19T12:00:00");
+        jest.setSystemTime(today);
+
+        // Mount with no eligible tasks (e.g. Firestore snapshot not yet loaded).
+        const { rerender } = renderHook(({ tasks }) => useAutoUrgent("user-1", tasks), {
+            initialProps: { tasks: [] as ReturnType<typeof mockTask>[] },
+        });
+        await Promise.resolve();
+        expect(updateTask).not.toHaveBeenCalled();
+
+        // A newly eligible task arrives; it must be checked right away,
+        // not up to 5 minutes later when the interval fires.
+        const eligible = [
+            mockTask({
+                id: "t9",
+                dueDate: "2026-02-20",
+                autoUrgentDays: 3,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-10")),
+                updatedAt: fakeTimestamp(new Date("2026-02-10")),
+            }),
+        ];
+        rerender({ tasks: eligible });
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // No timer advanced: this only passes if the effect re-ran on the
+        // tasks change instead of waiting for the 5-minute interval.
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t9", { urgent: true });
+    });
+
+    it("marks urgent on a fresh mount when today is exactly 7 days before a due date two months out", () => {
+        // Created Feb 19 with a due date two months later. Evaluation day is
+        // exactly one week before that due date, as on a page reload.
+        const dueDate = "2026-04-19";
+        const today = new Date("2026-04-12T12:00:00");
+        jest.setSystemTime(today);
+
+        const tasks = [
+            mockTask({
+                id: "t-two-months",
+                dueDate,
+                autoUrgentDays: 7,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-19T12:00:00")),
+                updatedAt: fakeTimestamp(new Date("2026-02-19T12:00:00")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        // Trigger date is Apr 19 - 7 days = Apr 12, which is today.
+        // The write must happen on this mount, with the 5-minute interval unfired.
+        expect(updateTask).toHaveBeenCalledTimes(1);
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t-two-months", { urgent: true });
+    });
 });
