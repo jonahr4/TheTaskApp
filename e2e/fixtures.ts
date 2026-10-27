@@ -1,5 +1,6 @@
 import { test as base, expect } from "@playwright/test";
-import { destroyAccount, newAccount, signUp, type Account } from "./helpers";
+import { destroyAccount, newAccount, type Account } from "./helpers";
+import { LoginPage } from "./pages/LoginPage";
 
 /**
  * Per-test isolation. The fixture signs up a new Firebase user before the
@@ -10,7 +11,7 @@ export const test = base.extend<{ account: Account }>({
   account: [
     async ({ page }, use) => {
       const account = newAccount();
-      await signUp(page, account.email, account.password);
+      await new LoginPage(page).signUp(account.email, account.password);
       try {
         await use(account);
       } finally {
