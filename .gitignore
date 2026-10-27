@@ -6,3 +6,7 @@ node_modules
 .DS_Store
 .next*
 .claude
+
+# Playwright
+playwright-report/
+test-results/
