@@ -37,7 +37,7 @@ test.describe("tasks", () => {
     });
     created.push(title);
     await expect(tasks.taskRow(title)).toBeVisible();
-    await expect(tasks.badge(title, "Schedule")).toBeVisible();
+    await expect(tasks.badge(title, "SCHEDULE")).toBeVisible();
   });
 
   test("edits a task title", async ({ page }) => {

@@ -4,7 +4,7 @@ import { AutoUrgentPage } from "./pages/AutoUrgentPage";
 
 /**
  * Auto-urgent: a task with an auto-urgent window whose trigger date has
- * passed must be flipped to urgent by the app (visible as the "Do First"
+ * passed must be flipped to urgent by the app (visible as the "DO"
  * badge). The hook runs on mount and whenever tasks change, so creating the
  * task is enough to trigger it — no waiting on the 5-minute timer.
  */
@@ -30,7 +30,7 @@ test.describe("auto-urgent", () => {
     });
     created.push(title);
 
-    await expect(autoUrgent.badge(title, "Do First")).toBeVisible({
+    await expect(autoUrgent.badge(title, "DO")).toBeVisible({
       timeout: 30_000,
     });
   });
@@ -49,8 +49,8 @@ test.describe("auto-urgent", () => {
     created.push(title);
 
     await expect(autoUrgent.row(title)).toBeVisible();
-    await expect(autoUrgent.badge(title, "Do First")).toHaveCount(0, { timeout: 5_000 });
-    await expect(autoUrgent.badge(title, "Schedule")).toBeVisible();
+    await expect(autoUrgent.badge(title, "DO")).toHaveCount(0, { timeout: 5_000 });
+    await expect(autoUrgent.badge(title, "SCHEDULE")).toBeVisible();
   });
 
   test("custom auto-urgent window is respected", async ({ page }) => {
@@ -67,7 +67,7 @@ test.describe("auto-urgent", () => {
     });
     created.push(title);
 
-    await expect(autoUrgent.badge(title, "Do First")).toBeVisible({
+    await expect(autoUrgent.badge(title, "DO")).toBeVisible({
       timeout: 30_000,
     });
   });

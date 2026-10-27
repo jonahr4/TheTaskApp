@@ -21,7 +21,7 @@ export class AutoUrgentPage {
     return this.tasks.taskRow(title);
   }
 
-  badge(title: string, name: "Do First" | "Schedule") {
+  badge(title: string, name: "DO" | "SCHEDULE") {
     return this.tasks.badge(title, name);
   }
 }
