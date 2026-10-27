@@ -7,7 +7,8 @@ export class MatrixPage {
   constructor(private readonly page: Page) {}
 
   async goto() {
-    await this.page.goto("/matrix");
+    await this.page.getByRole("link", { name: "Matrix", exact: true }).click();
+    await this.page.waitForURL("**/matrix");
   }
 
   quadrant(id: QuadrantId) {

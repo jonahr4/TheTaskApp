@@ -25,7 +25,9 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
-    trace: "on-first-retry",
+    // Local runs do not retry, so "on-first-retry" never wrote a trace.
+    // Keep a trace for every failure, including the first attempt.
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },

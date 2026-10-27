@@ -26,9 +26,14 @@ export class TasksPage {
     return this.page.getByRole("heading", { name: "All Tasks" });
   }
 
-  /** Task row. @hello-pangea/dnd marks it with data-rfd-draggable-id. */
+  /**
+   * Task row. @hello-pangea/dnd marks it with data-rfd-draggable-id.
+   * Match the title text exactly so "buy milk" does not also match "buy milk edited".
+   */
   taskRow(title: string) {
-    return this.page.locator("[data-rfd-draggable-id]").filter({ hasText: title });
+    return this.page.locator("[data-rfd-draggable-id]").filter({
+      has: this.page.getByText(title, { exact: true }),
+    });
   }
 
   badge(title: string, name: string) {
@@ -36,7 +41,7 @@ export class TasksPage {
   }
 
   titleText(title: string) {
-    return this.taskRow(title).getByText(title);
+    return this.taskRow(title).getByText(title, { exact: true });
   }
 
   private newTaskModal() {
@@ -54,8 +59,16 @@ export class TasksPage {
 
     await modal.getByPlaceholder("What needs to be done?").fill(opts.title);
     if (opts.notes) await modal.getByPlaceholder("Add details...").fill(opts.notes);
-    if (opts.dueDate) await modal.locator('input[type="date"]').fill(opts.dueDate);
-    if (opts.dueTime) await modal.locator('input[type="time"]').fill(opts.dueTime);
+    if (opts.dueDate) {
+      const date = modal.locator('input[type="date"]');
+      await date.fill(opts.dueDate);
+      await date.blur();
+    }
+    if (opts.dueTime) {
+      const time = modal.locator('input[type="time"]');
+      await time.fill(opts.dueTime);
+      await time.blur();
+    }
     if (opts.priority) {
       await modal.getByRole("button", { name: opts.priority, exact: true }).click();
     }
@@ -67,7 +80,11 @@ export class TasksPage {
       }
     }
     if (opts.list) {
-      const listSelect = modal.locator("select").first();
+      // The first <select> is the phone-only priority picker (sm:hidden).
+      // The visible list picker is the one that offers General Tasks.
+      const listSelect = modal.locator("select:visible").filter({
+        has: this.page.locator("option", { hasText: "General Tasks" }),
+      });
       await listSelect.selectOption({ label: opts.list });
     }
 
@@ -101,7 +118,8 @@ export class TasksPage {
   }
 
   async toggleComplete(title: string) {
-    await this.taskRow(title).getByRole("button").first().click();
+    // The drag handle is also a button and comes first. The round checkbox is the complete control.
+    await this.taskRow(title).locator("button.rounded-full").click();
   }
 
   async delete(title: string) {

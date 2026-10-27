@@ -20,7 +20,9 @@ test.describe("calendar", () => {
     const title = uniqueTitle("e2e calendar");
     const tasks = new TasksPage(page);
     await tasks.goto();
-    await tasks.create({ title, dueDate: datePlusDays(2) });
+    // A time puts the event on the week grid. A date with no time stays in the
+    // all-day row, which this week view left empty.
+    await tasks.create({ title, dueDate: datePlusDays(2), dueTime: "09:00" });
     created.push(title);
 
     const calendar = new CalendarPage(page);

@@ -5,7 +5,8 @@ export class CalendarPage {
   constructor(private readonly page: Page) {}
 
   async goto() {
-    await this.page.goto("/calendar");
+    await this.page.getByRole("link", { name: "Calendar", exact: true }).click();
+    await this.page.waitForURL("**/calendar");
   }
 
   event(title: string) {
