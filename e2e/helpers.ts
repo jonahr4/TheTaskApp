@@ -30,7 +30,7 @@ export function modalByHeading(page: Page, heading: string, saveName: string) {
 
 /** A task row on /tasks, located by its unique title. */
 export function taskRow(page: Page, title: string) {
-  return page.locator('[data-rbd-draggable-id]').filter({ hasText: title });
+  return page.locator('[data-rfd-draggable-id]').filter({ hasText: title });
 }
 
 export type PriorityName = "Do First" | "Schedule" | "Delegate" | "Eliminate";

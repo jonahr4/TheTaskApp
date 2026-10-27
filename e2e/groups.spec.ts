@@ -19,7 +19,7 @@ test.describe("groups", () => {
     return page
       .locator("div")
       .filter({ has: page.getByRole("heading", { name, exact: true }) })
-      .filter({ has: page.locator("[data-rbd-draggable-id]") })
+      .filter({ has: page.locator("[data-rfd-draggable-id]") })
       .last();
   }
 
@@ -61,7 +61,7 @@ test.describe("groups", () => {
 
     const card = listCard(page, listName);
     await expect(
-      card.locator("[data-rbd-draggable-id]").filter({ hasText: title })
+      card.locator("[data-rfd-draggable-id]").filter({ hasText: title })
     ).toBeVisible();
   });
 });

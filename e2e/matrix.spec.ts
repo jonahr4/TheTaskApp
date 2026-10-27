@@ -28,23 +28,23 @@ test.describe("matrix", () => {
     created.push(title);
 
     await page.goto("/matrix");
-    const scheduleQ = page.locator('[data-rbd-droppable-id="SCHEDULE"]');
+    const scheduleQ = page.locator('[data-rfd-droppable-id="SCHEDULE"]');
     await expect(
-      scheduleQ.locator('[data-rbd-draggable-id]').filter({ hasText: title })
+      scheduleQ.locator('[data-rfd-draggable-id]').filter({ hasText: title })
     ).toBeVisible();
 
     // Edit the priority to Do First via the modal and re-check.
     await scheduleQ
-      .locator('[data-rbd-draggable-id]')
+      .locator('[data-rfd-draggable-id]')
       .filter({ hasText: title })
       .click();
     const modal = modalByHeading(page, "Edit Task", "Save changes");
     await modal.getByRole("button", { name: "Do First", exact: true }).click();
     await modal.getByRole("button", { name: "Save changes" }).click();
 
-    const doQ = page.locator('[data-rbd-droppable-id="DO"]');
+    const doQ = page.locator('[data-rfd-droppable-id="DO"]');
     await expect(
-      doQ.locator('[data-rbd-draggable-id]').filter({ hasText: title })
+      doQ.locator('[data-rfd-draggable-id]').filter({ hasText: title })
     ).toBeVisible();
   });
 });
