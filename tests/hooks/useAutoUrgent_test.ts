@@ -260,4 +260,31 @@ describe("useAutoUrgent", () => {
         // tasks change instead of waiting for the 5-minute interval.
         expect(updateTask).toHaveBeenCalledWith("user-1", "t9", { urgent: true });
     });
+
+    it("marks urgent on a fresh mount when today is exactly 7 days before a due date two months out", () => {
+        // Created Feb 19 with a due date two months later. Evaluation day is
+        // exactly one week before that due date, as on a page reload.
+        const dueDate = "2026-04-19";
+        const today = new Date("2026-04-12T12:00:00");
+        jest.setSystemTime(today);
+
+        const tasks = [
+            mockTask({
+                id: "t-two-months",
+                dueDate,
+                autoUrgentDays: 7,
+                urgent: false,
+                completed: false,
+                createdAt: fakeTimestamp(new Date("2026-02-19T12:00:00")),
+                updatedAt: fakeTimestamp(new Date("2026-02-19T12:00:00")),
+            }),
+        ];
+
+        renderHook(() => useAutoUrgent("user-1", tasks));
+
+        // Trigger date is Apr 19 - 7 days = Apr 12, which is today.
+        // The write must happen on this mount, with the 5-minute interval unfired.
+        expect(updateTask).toHaveBeenCalledTimes(1);
+        expect(updateTask).toHaveBeenCalledWith("user-1", "t-two-months", { urgent: true });
+    });
 });
