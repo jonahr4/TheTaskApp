@@ -1,4 +1,5 @@
 import { initializeApp, getApps, cert, type ServiceAccount } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 const serviceAccount: ServiceAccount = {
@@ -13,3 +14,4 @@ const app =
     : getApps()[0];
 
 export const adminDb = getFirestore(app);
+export const adminAuth = getAuth(app);

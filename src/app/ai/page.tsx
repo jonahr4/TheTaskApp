@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { auth } from "@/lib/firebase";
 import { useTasks } from "@/hooks/useTasks";
 import { createTask } from "@/lib/firestore";
 import { Sparkles, Send, X, Check, CheckCheck, Loader2 } from "lucide-react";
@@ -91,9 +92,13 @@ export default function AiPage() {
         notes: t.notes || "",
       }));
 
+      const idToken = await auth.currentUser?.getIdToken();
       const res = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({
           text: trimmed,
           today,
