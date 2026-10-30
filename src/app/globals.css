@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: light;
+
   --bg: #f8f9fb;
   --bg-card: #ffffff;
   --bg-hover: #f1f3f5;
@@ -20,10 +22,87 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06);
+
+  /* Radius scale — ported from the mobile app's Radius tokens (8/12/16/22/28) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-xxl: 28px;
   --radius-full: 9999px;
+
+  /* Spacing scale — ported from the mobile app's Spacing tokens (4–32) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 24px;
+  --spacing-xxxl: 32px;
+
+  /* Type scale — ported from the mobile app's FontSize tokens (12–30) */
+  --font-xs: 12px;
+  --font-sm: 13px;
+  --font-md: 15px;
+  --font-lg: 17px;
+  --font-xl: 20px;
+  --font-xxl: 26px;
+  --font-title: 30px;
+
+  /* Eisenhower quadrant colors (light) — ported from mobile QUADRANT_META */
+  --q-do-color: #dc2626;
+  --q-do-bg: #fef2f2;
+  --q-do-border: #fca5a5;
+  --q-schedule-color: #2563eb;
+  --q-schedule-bg: #eff6ff;
+  --q-schedule-border: #93c5fd;
+  --q-delegate-color: #d97706;
+  --q-delegate-bg: #fffbeb;
+  --q-delegate-border: #fbbf24;
+  --q-delete-color: #6b7280;
+  --q-delete-bg: #f3f4f6;
+  --q-delete-border: #d1d5db;
+}
+
+/* Dark mode — palette ported 1:1 from the mobile app's dark Colors */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #1c1c1e;
+  --bg-card: #2c2c2e;
+  --bg-hover: #3a3a3c;
+  --bg-active: #48484a;
+  --text-primary: #f2f2f7;
+  --text-secondary: #aeaeb2;
+  --text-tertiary: #8e8e93;
+  --text-inverse: #1a1d23;
+  --border: #48484a;
+  --border-light: #38383a;
+  --accent: #7c7ff5;
+  --accent-hover: #9496f8;
+  --accent-light: rgba(124, 127, 245, 0.18);
+  --accent-muted: #5a5dd6;
+  --destructive: #ff453a;
+  --destructive-fg: #ffffff;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.45);
+
+  /* Eisenhower quadrant colors (dark) — ported from mobile QUADRANT_META */
+  --q-do-color: #ff6b6b;
+  --q-do-bg: #2d1515;
+  --q-do-border: #7f2020;
+  --q-schedule-color: #60a5fa;
+  --q-schedule-bg: #0f1e35;
+  --q-schedule-border: #1e3a6e;
+  --q-delegate-color: #fbbf24;
+  --q-delegate-bg: #2a1f08;
+  --q-delegate-border: #78400a;
+  --q-delete-color: #9ca3af;
+  --q-delete-bg: #26282c;
+  --q-delete-border: #3a3d42;
 }
 
 *,
@@ -43,6 +122,14 @@ body {
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Smooth theme transitions (opt-in via .theme-anim on body to avoid animating everything on load) */
+.theme-anim,
+.theme-anim * {
+  transition-property: background-color, border-color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
 }
 
 /* FullCalendar overrides */
@@ -117,4 +204,43 @@ body {
 
 .chat-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--text-tertiary);
+}
+
+/* Command palette */
+.cmdk-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cmdk-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cmdk-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

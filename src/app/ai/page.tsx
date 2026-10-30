@@ -188,6 +188,7 @@ export default function AiPage() {
         autoUrgentDays: null,
         completed: false,
         order: tasks.length,
+        createdFrom: "ai",
       });
 
       // Mark as added

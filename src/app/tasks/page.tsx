@@ -158,6 +158,7 @@ export default function TasksPage() {
       groupId: t.groupId || null,
       completed: false,
       order: tasks.length,
+      createdFrom: "tasks",
     } as any);
   };
 
@@ -503,7 +504,7 @@ export default function TasksPage() {
         </div>
       </DragDropContext>
 
-      <TaskModal open={taskModal} onOpenChange={setTaskModal} task={editTask} defaultGroupId={newTaskGroupId} />
+      <TaskModal open={taskModal} onOpenChange={setTaskModal} task={editTask} defaultGroupId={newTaskGroupId} createdFrom="tasks" />
       <GroupModal open={groupModal} onOpenChange={setGroupModal} group={editGroup} />
     </AppShell>
   );
